@@ -22,7 +22,7 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/store/cartStore";
-import { useStoreStore } from "@/store/locationStore";
+import { useStoreStore } from "@/store/storeStore";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
@@ -82,7 +82,7 @@ export function MenuContent() {
         .eq("is_active", true)
         .order("category"),
       supabase
-        .from("locations")
+        .from("stores")
         .select("*")
         .eq("id", activeStore.id)
         .single(),

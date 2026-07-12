@@ -5,7 +5,7 @@ import { useCartStore } from "./cartStore";
 
 interface StoreStore {
   activeStore: Store | null;
-  setStore: (location: Store) => void;
+  setStore: (store: Store) => void;
   clearStore: () => void;
 }
 
@@ -13,14 +13,14 @@ export const useStoreStore = create<StoreStore>()(
   persist(
     (set) => ({
       activeStore: null,
-      setStore: (location) => {
-        set({ activeStore: location });
+      setStore: (store) => {
+        set({ activeStore: store });
         useCartStore.getState().clearCart();
       },
       clearStore: () => set({ activeStore: null }),
     }),
     {
-      name: "2amclub-location",
+      name: "2amclub-store",
     },
   ),
 );

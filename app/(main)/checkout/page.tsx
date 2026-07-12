@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
-import { useStoreStore } from "@/store/locationStore";
+import { useStoreStore } from "@/store/storeStore";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatPrice, getImageUrl } from "@/lib/utils";

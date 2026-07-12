@@ -6,7 +6,7 @@ import { ShoppingCart, Menu, X, Zap, Moon, Sun, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useCartStore } from "@/store/cartStore";
-import { useStoreStore } from "@/store/locationStore";
+import { useStoreStore } from "@/store/storeStore";
 import { cn } from "@/lib/cn";
 
 const navLinks = [

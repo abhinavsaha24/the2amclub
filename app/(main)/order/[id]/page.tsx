@@ -41,7 +41,7 @@ const STATUS_STEPS = [
 export default function OrderStatusPage() {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
-  const [location, setStore] = useState<Store | null>(null);
+  const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,10 +61,10 @@ export default function OrderStatusPage() {
 
     setOrder(orderData as Order);
 
-    // Fetch location for pickup address
+    // Fetch store for pickup address
     if (orderData.store_id) {
       const { data: locData } = await supabase
-        .from("locations")
+        .from("stores")
         .select("*")
         .eq("id", orderData.store_id)
         .single();
@@ -181,7 +181,7 @@ export default function OrderStatusPage() {
 
         {/* Pickup Address (shown after confirmation) */}
         {["confirmed", "ready", "collected"].includes(order.status) &&
-          location?.pickup_address && (
+          store?.pickup_address && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -194,7 +194,7 @@ export default function OrderStatusPage() {
                     Pickup Store
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    {location.pickup_address}
+                    {store.pickup_address}
                   </p>
                 </div>
               </div>
