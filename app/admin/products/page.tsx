@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Plus,
   Edit2,
@@ -23,6 +25,8 @@ import { Modal } from "@/components/ui/Modal";
 import { toast } from "sonner";
 import { formatPrice, getImageUrl } from "@/lib/utils";
 import type { Product } from "@/types";
+import { ProductSchema } from "@/lib/validators";
+import { z } from "zod";
 
 const CATEGORIES = [
   "Noodles",
@@ -33,23 +37,7 @@ const CATEGORIES = [
   "Snacks",
 ];
 
-interface ProductFormData {
-  name: string;
-  category: string;
-  description: string;
-  price: string;
-  stock: string;
-  is_active: boolean;
-}
-
-const emptyForm: ProductFormData = {
-  name: "",
-  category: "Noodles",
-  description: "",
-  price: "",
-  stock: "",
-  is_active: true,
-};
+type ProductFormData = z.infer<typeof ProductSchema>;
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -58,11 +46,28 @@ export default function AdminProductsPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [form, setForm] = useState<ProductFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<ProductFormData>({
+    resolver: zodResolver(ProductSchema as any),
+    defaultValues: {
+      name: "",
+      category: "Noodles",
+      description: "",
+      price: 0,
+      stock: 0,
+      is_active: true,
+    },
+  });
 
   const fetchProducts = useCallback(async () => {
     const locId = await getAdminSession();
@@ -87,7 +92,14 @@ export default function AdminProductsPage() {
 
   const openAdd = () => {
     setEditingProduct(null);
-    setForm(emptyForm);
+    reset({
+      name: "",
+      category: "Noodles",
+      description: "",
+      price: 0,
+      stock: 0,
+      is_active: true,
+    });
     setImageFile(null);
     setImagePreview(null);
     setModalOpen(true);
@@ -95,12 +107,12 @@ export default function AdminProductsPage() {
 
   const openEdit = (product: Product) => {
     setEditingProduct(product);
-    setForm({
+    reset({
       name: product.name,
       category: product.category,
       description: product.description ?? "",
-      price: product.price.toString(),
-      stock: product.stock.toString(),
+      price: product.price,
+      stock: product.stock,
       is_active: product.is_active,
     });
     setImageFile(null);
@@ -115,103 +127,99 @@ export default function AdminProductsPage() {
       toast.error("Please select an image file");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be under 5MB");
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2MB");
       return;
     }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleSave = async () => {
+  const onSubmit = async (data: ProductFormData) => {
     if (!locationId) return;
-    if (!form.name.trim()) {
-      toast.error("Product name is required");
-      return;
-    }
-
-    const price = parseFloat(form.price);
-    const stock = parseInt(form.stock);
-    if (isNaN(price) || price <= 0) {
-      toast.error("Invalid price");
-      return;
-    }
-    if (isNaN(stock) || stock < 0) {
-      toast.error("Invalid stock");
-      return;
-    }
-
     setSaving(true);
-    const supabase = createClient();
 
-    let imagePath: string | null = editingProduct?.image ?? null;
-
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("category", data.category);
+    formData.append("price", data.price.toString());
+    formData.append("stock", data.stock.toString());
+    formData.append("is_active", data.is_active.toString());
+    if (data.description) formData.append("description", data.description);
+    
     if (imageFile) {
-      const ext = imageFile.name.split(".").pop();
-      const filename = `${Date.now()}.${ext}`;
-      const { data: uploadData, error: uploadErr } = await supabase.storage
-        .from("product-images")
-        .upload(filename, imageFile, { upsert: true });
-
-      if (uploadErr) {
-        toast.error("Image upload failed: " + uploadErr.message);
-        setSaving(false);
-        return;
-      }
-      imagePath = uploadData.path;
+      formData.append("image", imageFile);
     }
-
-    const payload = {
-      location_id: locationId,
-      name: form.name.trim(),
-      category: form.category,
-      description: form.description.trim() || null,
-      price,
-      stock,
-      is_active: form.is_active,
-      image: imagePath,
-    };
-
+    if (editingProduct?.image) {
+      formData.append("oldImage", editingProduct.image);
+    }
     if (editingProduct) {
-      const { error } = await supabase
-        .from("products")
-        .update(payload)
-        .eq("id", editingProduct.id);
-      if (error) toast.error("Update failed: " + error.message);
-      else toast.success("Product updated!");
-    } else {
-      const { error } = await supabase.from("products").insert(payload);
-      if (error) toast.error("Create failed: " + error.message);
-      else toast.success("Product created!");
+      formData.append("id", editingProduct.id);
     }
 
-    setSaving(false);
-    setModalOpen(false);
-    fetchProducts();
+    try {
+      const res = await fetch("/api/v1/admin/products", {
+        method: editingProduct ? "PATCH" : "POST",
+        body: formData,
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error?.message || "Something went wrong");
+      }
+
+      toast.success(editingProduct ? "Product updated!" : "Product created!");
+      setModalOpen(false);
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleActive = async (product: Product) => {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("products")
-      .update({ is_active: !product.is_active })
-      .eq("id", product.id);
-    if (error) toast.error("Toggle failed");
-    else {
-      toast.success(
-        `${product.name} ${product.is_active ? "hidden" : "visible"}`,
-      );
+    const formData = new FormData();
+    formData.append("id", product.id);
+    formData.append("name", product.name);
+    formData.append("category", product.category);
+    formData.append("price", product.price.toString());
+    formData.append("stock", product.stock.toString());
+    formData.append("is_active", (!product.is_active).toString());
+    if (product.description) formData.append("description", product.description);
+    // Don't append image to preserve existing
+
+    try {
+      const res = await fetch("/api/v1/admin/products", {
+        method: "PATCH",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Toggle failed");
+      
+      toast.success(`${product.name} ${product.is_active ? "hidden" : "visible"}`);
       fetchProducts();
+    } catch (e: any) {
+      toast.error(e.message);
     }
   };
 
   const handleDelete = async (id: string) => {
-    const supabase = createClient();
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) toast.error("Delete failed: " + error.message);
-    else toast.success("Product deleted");
-    setDeleteId(null);
-    fetchProducts();
+    const product = products.find(p => p.id === id);
+    let url = `/api/v1/admin/products?id=${id}`;
+    if (product?.image) {
+      url += `&imagePath=${encodeURIComponent(product.image)}`;
+    }
+
+    try {
+      const res = await fetch(url, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      toast.success("Product deleted");
+      setDeleteId(null);
+      fetchProducts();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   };
 
   return (
@@ -340,7 +348,7 @@ export default function AdminProductsPage() {
         title={editingProduct ? "Edit Product" : "Add Product"}
         size="lg"
       >
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Image Upload */}
           <div>
             <label className="text-sm font-medium text-foreground block mb-2">
@@ -377,87 +385,128 @@ export default function AdminProductsPage() {
             </div>
           </div>
 
-          <Input
-            label="Product Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="e.g. Butter Maggi"
-            id="product-name"
-          />
+          <div>
+            <Controller
+              name="name"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  label="Product Name"
+                  placeholder="e.g. Butter Maggi"
+                  id="product-name"
+                />
+              )}
+            />
+            {errors.name && <span className="text-xs text-red-500">{errors.name.message}</span>}
+          </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-foreground">
               Category
             </label>
-            <select
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-foreground"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <Controller
+              name="category"
+              control={control}
+              render={({ field }) => (
+                <select
+                  {...field}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-foreground"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
+            {errors.category && <span className="text-xs text-red-500">{errors.category.message}</span>}
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-foreground">
               Description
             </label>
-            <textarea
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none h-20 text-foreground"
-              placeholder="Optional description…"
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <textarea
+                  {...field}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none h-20 text-foreground"
+                  placeholder="Optional description…"
+                />
+              )}
             />
+            {errors.description && <span className="text-xs text-red-500">{errors.description.message}</span>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Price (₹)"
-              type="number"
-              value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
-              placeholder="0.00"
-              id="product-price"
-              min="0"
-              step="0.50"
-            />
-            <Input
-              label="Stock"
-              type="number"
-              value={form.stock}
-              onChange={(e) => setForm({ ...form, stock: e.target.value })}
-              placeholder="0"
-              id="product-stock"
-              min="0"
-            />
+            <div>
+              <Controller
+                name="price"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    label="Price (₹)"
+                    type="number"
+                    placeholder="0.00"
+                    id="product-price"
+                    min="0"
+                    step="0.50"
+                  />
+                )}
+              />
+              {errors.price && <span className="text-xs text-red-500">{errors.price.message}</span>}
+            </div>
+            <div>
+              <Controller
+                name="stock"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    label="Stock"
+                    type="number"
+                    placeholder="0"
+                    id="product-stock"
+                    min="0"
+                  />
+                )}
+              />
+              {errors.stock && <span className="text-xs text-red-500">{errors.stock.message}</span>}
+            </div>
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer py-2">
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, is_active: !form.is_active })}
-              className={`w-10 h-6 rounded-full transition-colors relative ${form.is_active ? "bg-primary" : "bg-muted"}`}
-            >
-              <span
-                className={`absolute top-1 w-4 h-4 rounded-full bg-primary-foreground transition-all shadow-sm ${form.is_active ? "left-5" : "left-1"}`}
-              />
-            </button>
-            <span className="text-sm font-medium text-foreground">
-              {form.is_active ? "Visible on menu" : "Hidden from menu"}
-            </span>
-          </label>
+          <Controller
+            name="is_active"
+            control={control}
+            render={({ field }) => (
+              <label className="flex items-center gap-3 cursor-pointer py-2">
+                <button
+                  type="button"
+                  onClick={() => field.onChange(!field.value)}
+                  className={`w-10 h-6 rounded-full transition-colors relative ${field.value ? "bg-primary" : "bg-muted"}`}
+                >
+                  <span
+                    className={`absolute top-1 w-4 h-4 rounded-full bg-primary-foreground transition-all shadow-sm ${field.value ? "left-5" : "left-1"}`}
+                  />
+                </button>
+                <span className="text-sm font-medium text-foreground">
+                  {field.value ? "Visible on menu" : "Hidden from menu"}
+                </span>
+              </label>
+            )}
+          />
 
           <div className="flex gap-3 pt-4 border-t border-border">
             <Button
               variant="outline"
               size="md"
               fullWidth
+              type="button"
               onClick={() => setModalOpen(false)}
             >
               Cancel
@@ -466,14 +515,14 @@ export default function AdminProductsPage() {
               variant="default"
               size="md"
               fullWidth
+              type="submit"
               loading={saving}
               leftIcon={<Check size={16} />}
-              onClick={handleSave}
             >
               {editingProduct ? "Save Changes" : "Create Product"}
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
 
       {/* Delete Confirm Modal */}
