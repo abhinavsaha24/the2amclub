@@ -4,10 +4,10 @@ interface LogPayload {
   level: LogLevel;
   action: string;
   requestId?: string;
-  locationId?: string;
+  storeId?: string;
   adminId?: string;
   duration_ms?: number;
-  status: "success" | "failure" | "pending";
+  status?: "success" | "failure" | "pending";
   error?: string | any;
   [key: string]: any; // Additional contextual data
 }

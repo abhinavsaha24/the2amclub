@@ -14,7 +14,7 @@ export async function GET() {
   };
 
   try {
-    const { error: dbError } = await supabase.from("locations").select("id").limit(1);
+    const { error: dbError } = await supabase.from("organizations").select("id").limit(1);
     health.database = dbError ? "error" : "healthy";
   } catch {
     health.database = "error";

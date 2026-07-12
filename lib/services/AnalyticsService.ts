@@ -7,12 +7,16 @@ export class AnalyticsService {
     const { count: orgCount } = await supabase.from("organizations").select("*", { count: "exact", head: true });
     const { count: storeCount } = await supabase.from("stores").select("*", { count: "exact", head: true });
     
-    const { data: totalRevenue } = await supabase.rpc("calculate_platform_revenue");
+    const { data: revenueOrders } = await supabase
+      .from("orders")
+      .select("total")
+      .in("status", ["confirmed", "collected"]);
+    const totalRevenue = revenueOrders?.reduce((acc, o) => acc + Number(o.total), 0) ?? 0;
 
     return {
       totalOrganizations: orgCount || 0,
       totalStores: storeCount || 0,
-      totalRevenue: totalRevenue || 0,
+      totalRevenue,
     };
   }
 

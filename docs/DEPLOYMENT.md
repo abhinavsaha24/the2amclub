@@ -25,4 +25,15 @@ A GitHub Action workflow (`.github/workflows/main.yml`) automatically performs:
 A failing CI build will block PR merges into `main`.
 
 ## Database Deployment
-You must execute the production SQL schema located in `supabase/schema.sql` inside the Supabase SQL Editor to provision the multi-tenant architecture before launch.
+With the V4 architecture, we now use the Supabase CLI for migrations to guarantee strict RLS enforcement.
+
+1. Ensure the Supabase CLI is installed (`npm install -g supabase`).
+2. Link your production project:
+   ```bash
+   supabase link --project-ref <your-project-id>
+   ```
+3. Push the new schema and RLS policies to production:
+   ```bash
+   supabase db push
+   ```
+   *(This applies `supabase/migrations/00000000000000_init.sql` securely.)*

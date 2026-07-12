@@ -60,7 +60,7 @@ export default function AdminLayout({
         // Fetch location name for the sidebar
         const supabase = createClient();
         const { data } = await supabase
-          .from("locations")
+          .from("stores")
           .select("name")
           .eq("id", storeId)
           .single();

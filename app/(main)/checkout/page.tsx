@@ -15,7 +15,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useStoreStore } from "@/store/locationStore";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getImageUrl } from "@/lib/utils";
 
 type Step = "DETAILS" | "PAYMENT" | "SUCCESS";
 
@@ -235,7 +235,7 @@ export default function CheckoutPage() {
               <div className="relative w-48 h-48 sm:w-56 sm:h-56 bg-white p-4 rounded-2xl mx-auto shadow-md mb-6 border border-border">
                 {activeStore?.qr_code ? (
                   <Image
-                    src={activeStore.qr_code}
+                    src={getImageUrl(activeStore.qr_code)}
                     alt="UPI QR Code"
                     fill
                     className="object-contain p-2"

@@ -56,7 +56,7 @@ export default function AdminSettingsPage() {
 
     const supabase = createClient();
     const { data } = await supabase
-      .from("locations")
+      .from("stores")
       .select("*")
       .eq("id", storeId)
       .single();
@@ -108,12 +108,12 @@ export default function AdminSettingsPage() {
       formData.append("qr_image", imageFile);
     }
     if (existingQrPath) {
-      formData.append("oldQr", existingQrPath);
+      formData.append("old_qr_path", existingQrPath);
     }
 
     try {
       const res = await fetch("/api/v1/admin/settings", {
-        method: "PATCH",
+        method: "PUT",
         body: formData,
       });
 

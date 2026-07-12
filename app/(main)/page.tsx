@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import {  } from "@/types";
 
 export const revalidate = 60; // ISR cache for 60 seconds
 

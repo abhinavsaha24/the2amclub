@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: CreateOrderPayload = await request.json();
-    const { customer_name, customer_phone, utr_reference, items } = body;
+    const { store_id, customer_name, customer_phone, utr_reference, items } = body;
 
     // Validate input
-    if (!customer_name?.trim() || !customer_phone?.trim() || !items?.length) {
+    if (!store_id?.trim() || !customer_name?.trim() || !customer_phone?.trim() || !items?.length) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -51,18 +51,25 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceRoleClient();
 
-    // Check shop is open
-    const { data: settings } = await supabase
-      .from("settings")
-      .select("shop_open")
-      .eq("id", 1)
+    // Check shop is open for this store
+    const { data: storeData } = await supabase
+      .from("stores")
+      .select("shop_open, organization_id")
+      .eq("id", store_id)
       .single();
-    if (settings && !settings.shop_open) {
+    if (!storeData) {
       return NextResponse.json(
-        { error: "Shop is currently closed. Please try again later." },
+        { error: "Store not found." },
+        { status: 404 },
+      );
+    }
+    if (!storeData.shop_open) {
+      return NextResponse.json(
+        { error: "This store is currently closed. Please try again later." },
         { status: 400 },
       );
     }
+    const organization_id = storeData.organization_id;
 
     // Fetch product prices and validate stock
     const productIds = items.map((i) => i.product_id);
@@ -117,6 +124,8 @@ export async function POST(request: NextRequest) {
       .from("orders")
       .insert({
         order_no: orderNo,
+        store_id,
+        organization_id,
         customer_name: customer_name.trim(),
         customer_phone: customer_phone.trim(),
         total,

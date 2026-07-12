@@ -90,15 +90,6 @@ export function getImageUrl(path: string | null): string {
 }
 
 /**
- * Get UPI QR image URL from Supabase storage
- */
-export function getUpiQrUrl(path: string | null): string {
-  if (!path) return "";
-  if (path.startsWith("http")) return path;
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/upi-qr/${path}`;
-}
-
-/**
  * Order status display config
  */
 export const ORDER_STATUS_CONFIG = {

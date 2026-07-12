@@ -8,11 +8,6 @@ export const OrderStatus = {
 
 export type OrderStatusType = (typeof OrderStatus)[keyof typeof OrderStatus];
 
-export const Roles = {
-  ADMIN: "admin",
-  CUSTOMER: "customer",
-} as const;
-
 export const StorageBuckets = {
   PRODUCT_IMAGES: "product-images",
 } as const;

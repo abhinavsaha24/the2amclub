@@ -110,7 +110,7 @@ export interface ApiResponse<T = unknown> {
 }
 
 export interface CreateOrderPayload {
-  location_id: string;
+  store_id: string;
   customer_name: string;
   customer_phone: string;
   utr_reference?: string;
