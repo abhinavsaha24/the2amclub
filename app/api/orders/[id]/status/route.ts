@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import type { OrderStatus } from "@/types";
+import { logger } from "@/lib/logger";
 
 const VALID_TRANSITIONS: Record<string, OrderStatus[]> = {
   pending: ["confirmed", "cancelled"],
@@ -69,7 +70,7 @@ export async function PATCH(
       .eq("id", id);
 
     if (updateError) {
-      console.error("Status update error:", updateError);
+      logger.error({ action: "update_order_status", error: updateError });
       return NextResponse.json(
         { error: "Failed to update order status" },
         { status: 500 },
@@ -78,7 +79,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Status update error:", err);
+    logger.error({ action: "update_order_status_unhandled", error: err });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

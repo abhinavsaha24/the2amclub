@@ -1,14 +1,16 @@
-import { createServiceRoleClient } from "../supabase/server";
+import { createClient } from "../supabase/server";
 import { StorageBuckets } from "../constants";
 import { StorageError } from "../errors";
+import { logger } from "../logger";
 
 export class StorageService {
-  private get client() {
-    return createServiceRoleClient();
+  private async getClient() {
+    return await createClient();
   }
 
   async uploadImage(path: string, buffer: Buffer, mimeType: string = "image/webp"): Promise<string> {
-    const { data, error } = await this.client.storage
+    const client = await this.getClient();
+    const { data, error } = await client.storage
       .from(StorageBuckets.PRODUCT_IMAGES)
       .upload(path, buffer, {
         contentType: mimeType,
@@ -31,7 +33,8 @@ export class StorageService {
       storagePath = match[1];
     }
 
-    const { error } = await this.client.storage
+    const client = await this.getClient();
+    const { error } = await client.storage
       .from(StorageBuckets.PRODUCT_IMAGES)
       .remove([storagePath]);
       
@@ -50,7 +53,7 @@ export class StorageService {
         await this.deleteImage(oldPath);
       } catch (err) {
         // Log it, but don't fail the replace operation just because cleanup failed
-        console.error("[STORAGE CLEANUP ERROR]", err);
+        logger.error({ action: "storage_cleanup", error: err, bucket: StorageBuckets.PRODUCT_IMAGES, path: oldPath });
       }
     }
 

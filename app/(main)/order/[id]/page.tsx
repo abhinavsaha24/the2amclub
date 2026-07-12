@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatPrice, formatDate, ORDER_STATUS_CONFIG } from "@/lib/utils";
-import type { Order, Location } from "@/types";
+import type { Order, Store } from "@/types";
 import Link from "next/link";
 
 const STATUS_STEPS = [
@@ -41,7 +41,7 @@ const STATUS_STEPS = [
 export default function OrderStatusPage() {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
-  const [location, setLocation] = useState<Location | null>(null);
+  const [location, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,14 +62,14 @@ export default function OrderStatusPage() {
     setOrder(orderData as Order);
 
     // Fetch location for pickup address
-    if (orderData.location_id) {
+    if (orderData.store_id) {
       const { data: locData } = await supabase
         .from("locations")
         .select("*")
-        .eq("id", orderData.location_id)
+        .eq("id", orderData.store_id)
         .single();
       if (locData) {
-        setLocation(locData as Location);
+        setStore(locData as Store);
       }
     }
 
@@ -191,7 +191,7 @@ export default function OrderStatusPage() {
                 <MapPin size={18} className="text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="text-foreground text-sm font-heading font-bold mb-1">
-                    Pickup Location
+                    Pickup Store
                   </p>
                   <p className="text-muted-foreground text-sm">
                     {location.pickup_address}

@@ -1,4 +1,5 @@
 "use client";
+import { getStoreId } from "@/lib/storeAuth";
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -13,7 +14,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { getAdminSession } from "@/lib/adminAuth";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
@@ -27,8 +27,8 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    const locId = await getAdminSession();
-    if (!locId) return;
+    const storeId = await getStoreId();
+    if (!storeId) return;
 
     const supabase = createClient();
     const today = new Date();
@@ -43,24 +43,24 @@ export default function AdminDashboardPage() {
       supabase
         .from("orders")
         .select("total")
-        .eq("location_id", locId)
+        .eq("store_id", storeId)
         .in("status", ["confirmed", "ready", "collected"])
         .gte("created_at", today.toISOString()),
       supabase
         .from("orders")
         .select("total")
-        .eq("location_id", locId)
+        .eq("store_id", storeId)
         .in("status", ["confirmed", "ready", "collected"]),
       supabase
         .from("orders")
         .select("*")
-        .eq("location_id", locId)
+        .eq("store_id", storeId)
         .order("created_at", { ascending: false })
         .limit(10),
       supabase
         .from("products")
         .select("*")
-        .eq("location_id", locId)
+        .eq("store_id", storeId)
         .gt("stock", 0)
         .lte("stock", 5)
         .order("stock"),
@@ -84,8 +84,8 @@ export default function AdminDashboardPage() {
 
   // CSV Export
   const exportCSV = async () => {
-    const locId = await getAdminSession();
-    if (!locId) return;
+    const storeId = await getStoreId();
+    if (!storeId) return;
 
     const supabase = createClient();
     const { data } = await supabase
@@ -93,7 +93,7 @@ export default function AdminDashboardPage() {
       .select(
         "order_no, customer_name, customer_phone, total, status, utr_reference, created_at",
       )
-      .eq("location_id", locId)
+      .eq("store_id", storeId)
       .order("created_at", { ascending: false });
 
     if (!data) return;

@@ -1,162 +1,126 @@
-"use client";
+import Link from "next/link";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import {  } from "@/types";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { MapPin, ArrowRight, Loader2, Building2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { useLocationStore } from "@/store/locationStore";
-import type { Location } from "@/types";
+export const revalidate = 60; // ISR cache for 60 seconds
 
-export default function HomePage() {
-  const router = useRouter();
-  const { setLocation, activeLocation } = useLocationStore();
-
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchLocations() {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("locations")
-          .select("*")
-          .order("name");
-
-        if (error) throw error;
-
-        const locs = (data as Location[]) ?? [];
-        setLocations(locs);
-
-        // If there's only one location, auto-select it and go to menu
-        if (locs.length === 1 && !activeLocation) {
-          setLocation(locs[0]);
-          router.replace("/menu");
-        } else {
-          setLoading(false);
-        }
-      } catch (err: any) {
-        setError(err.message || "Failed to load locations");
-        setLoading(false);
-      }
+export default async function HomePage() {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
     }
+  );
 
-    fetchLocations();
-  }, [router, setLocation, activeLocation]);
+  // Fetch all active stores along with their organizations
+  const { data: stores, error } = await supabase
+    .from("stores")
+    .select(`
+      *,
+      organizations (
+        name,
+        slug
+      )
+    `)
+    .eq("is_active", true);
 
-  const handleSelectLocation = (loc: Location) => {
-    setLocation(loc);
-    router.push("/menu");
-  };
-
-  if (loading) {
+  if (error || !stores) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 size={32} className="animate-spin text-muted-foreground" />
-        <p className="text-muted-foreground font-medium">
-          Finding locations near you...
-        </p>
+      <div className="min-h-screen flex items-center justify-center text-red-500">
+        Failed to load platform data.
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="p-6 rounded-xl bg-destructive/10 text-destructive max-w-md text-center">
-          <p className="font-semibold text-lg mb-2">Error</p>
-          <p>{error}</p>
-        </div>
-      </div>
-    );
-  }
+  // Group stores by organization for display
+  const orgMap = new Map<string, { orgName: string; stores: any[] }>();
+  
+  stores.forEach((store) => {
+    const org = Array.isArray(store.organizations) ? store.organizations[0] : store.organizations;
+    if (!org) return;
+
+    if (!orgMap.has(org.slug)) {
+      orgMap.set(org.slug, { orgName: org.name, stores: [] });
+    }
+    orgMap.get(org.slug)!.stores.push(store);
+  });
 
   return (
-    <div className="container-app py-16 md:py-24">
-      <div className="max-w-3xl mx-auto flex flex-col items-center text-center">
-        {/* Hero Text */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="space-y-6 mb-12"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium mb-4">
-            <Building2 size={16} />
-            <span>Multiple Locations Available</span>
-          </div>
-
-          <h1 className="font-heading text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground">
-            Craving at 2 AM?
-            <br />
-            <span className="text-muted-foreground">We&apos;ve got you.</span>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto pt-12">
+        <div className="text-center mb-16">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
+            Welcome to The 2AM Club
           </h1>
-
-          <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto">
-            Premium late-night food ordering. Fast, secure, and right on campus.
-            Select your hostel or block to get started.
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            Select your campus store to start ordering.
           </p>
-        </motion.div>
+        </div>
 
-        {/* Location Picker */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="w-full max-w-md"
-        >
-          <div className="bg-card border shadow-sm rounded-2xl overflow-hidden p-2">
-            <div className="px-4 py-3 border-b bg-muted/50 mb-2 rounded-xl">
-              <h2 className="font-semibold text-foreground text-left">
-                Select your location
-              </h2>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              {locations.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  No active locations found right now.
-                </div>
-              ) : (
-                locations.map((loc) => (
-                  <button
-                    key={loc.id}
-                    onClick={() => handleSelectLocation(loc)}
-                    className="flex items-center justify-between w-full p-4 rounded-xl text-left hover:bg-secondary transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-background border shadow-sm group-hover:scale-105 transition-transform">
-                        <MapPin size={18} className="text-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          {loc.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {loc.pickup_address}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {!loc.shop_open && (
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 bg-destructive/10 text-destructive rounded-md">
-                          Closed
-                        </span>
-                      )}
-                      <ArrowRight
-                        size={18}
-                        className="text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all"
+        {Array.from(orgMap.entries()).map(([orgSlug, { orgName, stores }]) => (
+          <div key={orgSlug} className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 border-b border-gray-200 dark:border-gray-800 pb-2">
+              {orgName}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {stores.map((store) => (
+                <Link
+                  key={store.id}
+                  href={`/store/${orgSlug}/${store.slug}`}
+                  className="block bg-white dark:bg-gray-900 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-800 group"
+                >
+                  <div className="h-32 bg-gray-200 dark:bg-gray-800 relative">
+                    {store.banner ? (
+                      <img
+                        src={store.banner}
+                        alt={`${store.name} banner`}
+                        className="w-full h-full object-cover"
                       />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-80 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                  <div className="p-6 relative">
+                    {store.logo && (
+                      <div className="absolute -top-10 left-6 w-16 h-16 bg-white dark:bg-gray-900 rounded-full p-1 shadow-md">
+                        <img
+                          src={store.logo}
+                          alt={`${store.name} logo`}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className={store.logo ? "mt-4" : ""}>
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center justify-between">
+                        {store.name}
+                        {!store.shop_open && (
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-medium">
+                            Closed
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
+                        {store.pickup_address || "Pickup location not specified"}
+                      </p>
+                      {store.opening_hours && (
+                        <p className="text-gray-500 dark:text-gray-400 mt-1 text-xs">
+                          {store.opening_hours} - {store.closing_hours}
+                        </p>
+                      )}
                     </div>
-                  </button>
-                ))
-              )}
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
-        </motion.div>
+        ))}
       </div>
     </div>
   );

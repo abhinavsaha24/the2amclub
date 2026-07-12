@@ -2,22 +2,62 @@
 // Type Definitions — The 2AM Club (v3 - Multi-Admin)
 // ============================================================
 
-export interface Location {
+export type UserRole = "SUPER_ADMIN" | "STORE_OWNER" | "STORE_MANAGER" | "STAFF";
+
+export interface Profile {
   id: string;
+  role: UserRole;
   name: string;
-  admin_code: string;
-  upi_id: string | null;
-  upi_qr_image: string | null;
-  pickup_address: string | null;
-  shop_open: boolean;
-  notice: string | null;
+  phone: string | null;
   created_at: string;
   updated_at: string;
 }
 
+export interface Organization {
+  id: string;
+  slug: string;
+  name: string;
+  logo: string | null;
+  banner: string | null;
+  theme_color: string | null;
+  support_email: string | null;
+  support_phone: string | null;
+  website: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Store {
+  id: string;
+  organization_id: string;
+  slug: string;
+  name: string;
+  logo: string | null;
+  banner: string | null;
+  upi_id: string | null;
+  qr_code: string | null;
+  pickup_address: string | null;
+  opening_hours: string | null;
+  closing_hours: string | null;
+  shop_open: boolean;
+  notice: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreMember {
+  id: string;
+  store_id: string;
+  profile_id: string;
+  role: UserRole;
+  created_at: string;
+}
+
 export interface Product {
   id: string;
-  location_id: string;
+  organization_id: string;
+  store_id: string;
   name: string;
   category: string;
   description: string | null;
@@ -31,7 +71,8 @@ export interface Product {
 
 export interface Order {
   id: string;
-  location_id: string;
+  organization_id: string;
+  store_id: string;
   order_no: string;
   customer_name: string;
   customer_phone: string;
@@ -39,6 +80,7 @@ export interface Order {
   status: OrderStatus;
   utr_reference: string | null;
   created_at: string;
+  updated_at: string;
   order_items?: OrderItem[];
 }
 

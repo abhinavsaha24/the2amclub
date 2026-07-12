@@ -1,20 +1,27 @@
-# Security Overview
+# Security Architecture
 
-## 1. Authentication
-- Custom cookie-based authentication via `admin_code`.
-- Future migration path available to Supabase Auth.
-- No sensitive data exposed in client-side bundles.
+The 2AM Club enforces strict defense-in-depth security principles.
 
-## 2. API Security
-- **Data Validation:** Strict input validation via `zod`.
-- **Error Handling:** Standardized error wrapping via `lib/utils/api.ts` ensures internal SQL/V8 stack traces never leak to the client.
-- **Role-based Access:** Only `admin_session` can mutate products/settings.
+## 1. Authentication & Sessions
+- Powered exclusively by `@supabase/ssr`.
+- Cookies are `HttpOnly`, `Secure`, and `SameSite=Lax`.
+- Users cannot manually bypass JWT checks; middleware verifies sessions for every `/api/v1/admin` request.
 
-## 3. Storage Security
-- `product-images` bucket is Public for reads.
-- Uploads happen strictly via backend Next.js API using `SUPABASE_SERVICE_ROLE_KEY`.
-- No client-side uploads allowed.
-- Images are strictly limited to 2MB and resized to 1600px via `sharp` which strips EXIF metadata.
+## 2. Multi-Tenant Authorization
+- **No IDOR (Insecure Direct Object Reference)**: Every backend operation (e.g., `ProductService.updateProduct`) absolutely requires the authenticated user's `store_id` and `organization_id` injected automatically by the `withStoreAdminApiHandler`. 
+- Trusting client-side IDs is prohibited.
 
-## 4. Audit Logging
-- Every mutation (create/update/delete) is logged to the `audit_logs` table asynchronously for tracking admin activity.
+## 3. Database Security
+- **Row Level Security (RLS)** is enabled on all tables (`stores`, `products`, `orders`). 
+- Queries inherently filter out cross-tenant data. 
+
+## 4. Input & File Validation
+- **Zod Validation**: All requests are rigorously validated through shared `Zod` schemas.
+- **Upload Hardening**: The Storage API strips EXIF data, forces `.webp` conversion via `sharp`, and strictly limits image dimensions to 1600px width.
+
+## 5. Security Headers
+The following headers are enforced via `next.config.ts`:
+- `Content-Security-Policy`: Disallows untrusted scripts and restricts iframes to Stripe.
+- `Strict-Transport-Security`: HSTS ensures all traffic forces HTTPS.
+- `X-Frame-Options: DENY`: Mitigates clickjacking.
+- `X-Content-Type-Options: nosniff`: Prevents MIME-sniffing.

@@ -13,7 +13,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
-import { useLocationStore } from "@/store/locationStore";
+import { useStoreStore } from "@/store/locationStore";
 import { Button } from "@/components/ui/Button";
 import { formatPrice, getImageUrl } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -23,7 +23,7 @@ export default function CartPage() {
   const router = useRouter();
   const { items, updateQty, removeItem, totalItems, totalPrice } =
     useCartStore();
-  const { activeLocation } = useLocationStore();
+  const { activeStore } = useStoreStore();
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -51,9 +51,9 @@ export default function CartPage() {
           Looks like you haven't added anything to your cart yet. Browse the
           menu to find something delicious.
         </p>
-        <Link href={activeLocation ? "/menu" : "/"}>
+        <Link href={activeStore ? "/menu" : "/"}>
           <Button size="lg" className="rounded-full px-8">
-            {activeLocation ? "Browse Menu" : "Select Location"}
+            {activeStore ? "Browse Menu" : "Select Store"}
           </Button>
         </Link>
       </div>
@@ -67,11 +67,11 @@ export default function CartPage() {
           <h1 className="font-heading text-3xl md:text-4xl font-bold text-foreground">
             Your Cart
           </h1>
-          {activeLocation && (
+          {activeStore && (
             <p className="text-muted-foreground flex items-center gap-1.5 mt-2">
               <MapPin size={14} /> Ordering from:{" "}
               <span className="font-medium text-foreground">
-                {activeLocation.name}
+                {activeStore.name}
               </span>
             </p>
           )}

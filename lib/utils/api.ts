@@ -1,7 +1,10 @@
 import { NextResponse, NextRequest } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { BaseError } from "../errors";
+import { BaseError, AuthorizationError } from "../errors";
 import { logger } from "../logger";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { createServiceRoleClient } from "../supabase/server";
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -42,7 +45,6 @@ export function errorResponse(error: any, action: string = "unknown_action") {
     message = error.message;
   }
 
-  // Log the error
   logger.error({
     action,
     requestId,
@@ -67,9 +69,6 @@ export function errorResponse(error: any, action: string = "unknown_action") {
   return NextResponse.json(response, { status: statusCode });
 }
 
-/**
- * Wrapper for API route handlers to inject request IDs and centralize try/catch
- */
 export function withApiHandler(
   action: string,
   handler: (req: NextRequest, requestId: string) => Promise<NextResponse>
@@ -80,8 +79,6 @@ export function withApiHandler(
     
     try {
       const response = await handler(req, requestId);
-      
-      // Log successful request (optional, can be noisy for every GET request)
       if (req.method !== "GET") {
         logger.info({
           action,
@@ -90,8 +87,173 @@ export function withApiHandler(
           duration_ms: Date.now() - startTime,
         });
       }
-
       return response;
+    } catch (error) {
+      return errorResponse(error, action);
+    }
+  };
+}
+
+export interface StoreAdminContext {
+  userId: string;
+  storeId: string;
+  organizationId: string;
+  role: string;
+}
+
+export function withStoreAdminApiHandler(
+  action: string,
+  handler: (req: NextRequest, ctx: StoreAdminContext, requestId: string, routeCtx?: any) => Promise<NextResponse>
+) {
+  return async (req: NextRequest, routeCtx?: any) => {
+    const requestId = uuidv4();
+    const startTime = Date.now();
+    
+    try {
+      const cookieStore = await cookies();
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return cookieStore.get(name)?.value;
+            },
+            set() {},
+            remove() {},
+          },
+        }
+      );
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new AuthorizationError("Not authenticated");
+
+      const storeId = req.headers.get("x-store-id");
+      if (!storeId) throw new AuthorizationError("x-store-id header is required");
+
+      const adminClient = createServiceRoleClient();
+      const { data: member, error } = await adminClient
+        .from("store_members")
+        .select("role, store_id, stores(organization_id)")
+        .eq("store_id", storeId)
+        .eq("profile_id", user.id)
+        .single();
+
+      if (error || !member) {
+        // Fallback: Check if they are Super Admin
+        const { data: profile } = await adminClient
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.role !== "SUPER_ADMIN") {
+          throw new AuthorizationError("Unauthorized for this store");
+        }
+        
+        // Super admin trying to access a store needs the org ID of that store
+        const { data: storeInfo } = await adminClient
+          .from("stores")
+          .select("organization_id")
+          .eq("id", storeId)
+          .single();
+          
+        if (!storeInfo) throw new AuthorizationError("Store not found");
+
+        const ctx: StoreAdminContext = {
+          userId: user.id,
+          storeId,
+          organizationId: storeInfo.organization_id,
+          role: "SUPER_ADMIN",
+        };
+        const response = await handler(req, ctx, requestId, routeCtx);
+        return response;
+      }
+
+      const orgId = Array.isArray(member.stores) ? member.stores[0]?.organization_id : (member.stores as any)?.organization_id;
+
+      const ctx: StoreAdminContext = {
+        userId: user.id,
+        storeId: member.store_id,
+        organizationId: orgId,
+        role: member.role,
+      };
+
+      const response = await handler(req, ctx, requestId, routeCtx);
+      
+      if (req.method !== "GET") {
+        logger.info({
+          action,
+          requestId,
+          status: "success",
+          storeId,
+          duration_ms: Date.now() - startTime,
+        });
+      }
+      return response;
+    } catch (error) {
+      return errorResponse(error, action);
+    }
+  };
+}
+
+export function withAuthApiHandler(
+  action: string,
+  handler: (req: NextRequest, userId: string, requestId: string) => Promise<NextResponse>
+) {
+  return async (req: NextRequest) => {
+    const requestId = uuidv4();
+    try {
+      const cookieStore = await cookies();
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: { get(n) { return cookieStore.get(n)?.value; }, set() {}, remove() {} },
+        }
+      );
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new AuthorizationError("Not authenticated");
+
+      return await handler(req, user.id, requestId);
+    } catch (error) {
+      return errorResponse(error, action);
+    }
+  };
+}
+
+export function withSuperAdminApiHandler(
+  action: string,
+  handler: (req: NextRequest, userId: string, requestId: string) => Promise<NextResponse>
+) {
+  return async (req: NextRequest) => {
+    const requestId = uuidv4();
+    try {
+      const cookieStore = await cookies();
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: { get(n) { return cookieStore.get(n)?.value; }, set() {}, remove() {} },
+        }
+      );
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new AuthorizationError("Not authenticated");
+
+      const adminClient = createServiceRoleClient();
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "SUPER_ADMIN") {
+        throw new AuthorizationError("Super Admin access required");
+      }
+
+      return await handler(req, user.id, requestId);
     } catch (error) {
       return errorResponse(error, action);
     }

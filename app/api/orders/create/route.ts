@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { generateOrderNo } from "@/lib/utils";
 import type { CreateOrderPayload } from "@/types";
+import { logger } from "@/lib/logger";
 
 // Rate limiting (in-memory, resets on restart — good enough for MVP)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (orderError || !order) {
-      console.error("Order creation error:", orderError);
+      logger.error({ action: "create_order", error: orderError });
       return NextResponse.json(
         { error: "Failed to create order" },
         { status: 500 },
@@ -147,8 +148,9 @@ export async function POST(request: NextRequest) {
     const { error: itemsError } = await supabase
       .from("order_items")
       .insert(orderItems);
+    
     if (itemsError) {
-      console.error("Order items error:", itemsError);
+      logger.error({ action: "create_order_items", error: itemsError });
       return NextResponse.json(
         { error: "Failed to save order items" },
         { status: 500 },
@@ -163,7 +165,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (stockError) {
-        console.error("Stock deduction error:", stockError);
+        logger.error({ action: "deduct_stock", error: stockError, product_id: item.product_id });
         // Don't fail the order — stock validation was done above
       }
     }
@@ -173,7 +175,7 @@ export async function POST(request: NextRequest) {
       order_no: orderNo,
     });
   } catch (err) {
-    console.error("Create order error:", err);
+    logger.error({ action: "create_order_unhandled", error: err });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

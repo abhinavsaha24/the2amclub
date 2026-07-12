@@ -1,67 +1,67 @@
 import { NextRequest } from "next/server";
-import { getAdminSession } from "@/lib/adminAuth";
-import { locationService } from "@/lib/services";
-import { withApiHandler, successResponse } from "@/lib/utils/api";
-import { AuthenticationError, ValidationError } from "@/lib/errors";
-import { LocationSettingsSchema } from "@/lib/validators";
-import { v4 as uuidv4 } from "uuid";
-import sharp from "sharp";
+import { storeService } from "@/lib/services";
+import { UpdateStoreValidator } from "@/lib/validators";
+import { ValidationError } from "@/lib/errors";
+import {
+  withStoreAdminApiHandler,
+  successResponse,
+  StoreAdminContext
+} from "@/lib/utils/api";
 
-const MAX_SIZE_BYTES = 2 * 1024 * 1024;
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+export const PUT = withStoreAdminApiHandler(
+  "update_settings",
+  async (req: NextRequest, ctx: StoreAdminContext) => {
+    const formData = await req.formData();
+    const dataString = formData.get("data") as string;
+    
+    if (!dataString) throw new ValidationError("Missing settings data");
+    
+    let rawData;
+    try {
+      rawData = JSON.parse(dataString);
+    } catch {
+      throw new ValidationError("Invalid JSON format for settings data");
+    }
 
-async function processImage(file: File | null): Promise<{ buffer?: Buffer; mime?: string }> {
-  if (!file) return {};
-  if (file.size > MAX_SIZE_BYTES) throw new ValidationError("File too large. Maximum size is 2MB.");
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) throw new ValidationError("Unsupported file type.");
+    const validationResult = UpdateStoreValidator.safeParse(rawData);
+    if (!validationResult.success) {
+      throw new ValidationError(
+        "Validation failed",
+        validationResult.error.format()
+      );
+    }
 
-  const arrayBuffer = await file.arrayBuffer();
-  const rawBuffer = Buffer.from(arrayBuffer);
+    const file = formData.get("qr_image") as File | null;
+    let qrBuffer: Buffer | undefined = undefined;
+    let qrMime: string | undefined = undefined;
+    let qrPath: string | undefined = undefined;
 
-  try {
-    const buffer = await sharp(rawBuffer)
-      .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toBuffer();
-    return { buffer, mime: "image/webp" };
-  } catch (err) {
-    throw new ValidationError("Failed to process image.");
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        throw new ValidationError("Uploaded file is not a valid image");
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      qrBuffer = Buffer.from(arrayBuffer);
+      qrMime = file.type;
+      
+      const fileExt = file.name.split('.').pop() || 'webp';
+      const safeFilename = crypto.randomUUID() + "." + fileExt;
+      qrPath = `${ctx.storeId}/qr/${safeFilename}`;
+    }
+
+    const oldQrPath = rawData.old_qr_path || null;
+
+    const store = await storeService.updateSettings(
+      ctx.userId,
+      ctx.organizationId,
+      ctx.storeId,
+      validationResult.data,
+      qrBuffer,
+      qrMime,
+      qrPath,
+      oldQrPath
+    );
+
+    return successResponse(store, "Store settings updated successfully");
   }
-}
-
-export const PATCH = withApiHandler("update_settings", async (req: NextRequest) => {
-  const locationId = await getAdminSession();
-  if (!locationId) throw new AuthenticationError();
-
-  const formData = await req.formData();
-  
-  const rawPayload = {
-    shop_open: formData.get("shop_open"),
-    notice: formData.get("notice") || "",
-    upi_id: formData.get("upi_id") || "",
-    pickup_address: formData.get("pickup_address") || "",
-  };
-
-  const validation = LocationSettingsSchema.safeParse(rawPayload);
-  if (!validation.success) {
-    throw new ValidationError("Invalid settings data", validation.error.format());
-  }
-
-  const oldQrPath = formData.get("oldQr") as string | null;
-  const file = formData.get("qr_image") as File | null;
-  
-  const { buffer, mime } = await processImage(file);
-  const newQrPath = buffer ? `${locationId}/qr/${uuidv4()}.webp` : undefined;
-
-  const location = await locationService.updateSettings(
-    "admin_session",
-    locationId,
-    validation.data,
-    oldQrPath,
-    buffer,
-    mime,
-    newQrPath
-  );
-
-  return successResponse(location, "Settings updated successfully");
-});
+);

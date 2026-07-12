@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,12 +9,10 @@ import {
   Check,
   Copy,
   ArrowLeft,
-  Smartphone,
   ShieldCheck,
-  MapPin,
-} from "lucide-react";
+  } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
-import { useLocationStore } from "@/store/locationStore";
+import { useStoreStore } from "@/store/locationStore";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatPrice } from "@/lib/utils";
@@ -24,7 +22,7 @@ type Step = "DETAILS" | "PAYMENT" | "SUCCESS";
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCartStore();
-  const { activeLocation } = useLocationStore();
+  const { activeStore } = useStoreStore();
 
   const [step, setStep] = useState<Step>("DETAILS");
   const [mounted, setMounted] = useState(false);
@@ -44,14 +42,14 @@ export default function CheckoutPage() {
 
   // Redirect if cart is empty or location is missing
   useEffect(() => {
-    if (mounted && (items.length === 0 || !activeLocation)) {
+    if (mounted && (items.length === 0 || !activeStore)) {
       router.replace(items.length === 0 ? "/cart" : "/");
     }
-  }, [mounted, items.length, activeLocation, router]);
+  }, [mounted, items.length, activeStore, router]);
 
   const handleCopyUpi = () => {
-    if (!activeLocation?.upi_id) return;
-    navigator.clipboard.writeText(activeLocation.upi_id);
+    if (!activeStore?.upi_id) return;
+    navigator.clipboard.writeText(activeStore.upi_id);
     setCopied(true);
     toast.success("UPI ID copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
@@ -71,12 +69,12 @@ export default function CheckoutPage() {
       toast.error("Please enter a valid 12-digit UTR reference number");
       return;
     }
-    if (!activeLocation) return;
+    if (!activeStore) return;
 
     setLoading(true);
     try {
       const payload = {
-        location_id: activeLocation.id,
+        store_id: activeStore.id,
         customer_name: name.trim(),
         customer_phone: phone.trim(),
         utr_reference: utr.trim(),
@@ -103,7 +101,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (!mounted || items.length === 0 || !activeLocation) {
+  if (!mounted || items.length === 0 || !activeStore) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner size="md" />
@@ -235,9 +233,9 @@ export default function CheckoutPage() {
 
               {/* QR Code */}
               <div className="relative w-48 h-48 sm:w-56 sm:h-56 bg-white p-4 rounded-2xl mx-auto shadow-md mb-6 border border-border">
-                {activeLocation?.upi_qr_image ? (
+                {activeStore?.qr_code ? (
                   <Image
-                    src={activeLocation.upi_qr_image}
+                    src={activeStore.qr_code}
                     alt="UPI QR Code"
                     fill
                     className="object-contain p-2"
@@ -256,7 +254,7 @@ export default function CheckoutPage() {
                 </p>
                 <div className="flex items-center bg-secondary rounded-xl p-1 border border-border">
                   <div className="flex-1 px-3 text-sm font-medium truncate">
-                    {activeLocation?.upi_id || "Not Available"}
+                    {activeStore?.upi_id || "Not Available"}
                   </div>
                   <button
                     onClick={handleCopyUpi}
@@ -338,15 +336,15 @@ export default function CheckoutPage() {
                   <span className="text-foreground font-medium">{name}</span>
                 </p>
                 <p className="flex justify-between">
-                  <span>Location:</span>{" "}
+                  <span>Store:</span>{" "}
                   <span className="text-foreground font-medium">
-                    {activeLocation?.name}
+                    {activeStore?.name}
                   </span>
                 </p>
                 <p className="flex justify-between">
                   <span>Pickup:</span>{" "}
                   <span className="text-foreground font-medium text-right line-clamp-2">
-                    {activeLocation?.pickup_address}
+                    {activeStore?.pickup_address}
                   </span>
                 </p>
               </div>

@@ -1,23 +1,23 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Location } from "@/types";
+import type { Store } from "@/types";
 import { useCartStore } from "./cartStore";
 
-interface LocationStore {
-  activeLocation: Location | null;
-  setLocation: (location: Location) => void;
-  clearLocation: () => void;
+interface StoreStore {
+  activeStore: Store | null;
+  setStore: (location: Store) => void;
+  clearStore: () => void;
 }
 
-export const useLocationStore = create<LocationStore>()(
+export const useStoreStore = create<StoreStore>()(
   persist(
     (set) => ({
-      activeLocation: null,
-      setLocation: (location) => {
-        set({ activeLocation: location });
+      activeStore: null,
+      setStore: (location) => {
+        set({ activeStore: location });
         useCartStore.getState().clearCart();
       },
-      clearLocation: () => set({ activeLocation: null }),
+      clearStore: () => set({ activeStore: null }),
     }),
     {
       name: "2amclub-location",

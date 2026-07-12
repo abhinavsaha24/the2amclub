@@ -1,4 +1,5 @@
 "use client";
+import { getStoreId, clearStoreSession } from "@/lib/storeAuth";
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -17,10 +18,9 @@ import {
   Building2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getAdminSession, clearAdminSession } from "@/lib/adminAuth";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
-import type { Location } from "@/types";
+
 
 const navItems = [
   {
@@ -42,7 +42,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [locationName, setLocationName] = useState<string>("");
+  const [locationName, setStoreName] = useState<string>("");
 
   useEffect(() => {
     if (pathname === "/admin/login") {
@@ -51,8 +51,8 @@ export default function AdminLayout({
     }
     const check = async () => {
       try {
-        const locId = await getAdminSession();
-        if (!locId) {
+        const storeId = await getStoreId();
+        if (!storeId) {
           router.replace("/admin/login");
           return;
         }
@@ -62,9 +62,9 @@ export default function AdminLayout({
         const { data } = await supabase
           .from("locations")
           .select("name")
-          .eq("id", locId)
+          .eq("id", storeId)
           .single();
-        if (data) setLocationName(data.name);
+        if (data) setStoreName(data.name);
 
         setChecking(false);
       } catch {
@@ -75,7 +75,7 @@ export default function AdminLayout({
   }, [router, pathname]);
 
   const handleLogout = async () => {
-    await clearAdminSession();
+    await clearStoreSession();
     router.replace("/admin/login");
   };
 

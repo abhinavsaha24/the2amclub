@@ -1,26 +1,32 @@
-import { AuditRepository, AuditLogDTO } from "../repositories/audit.repository";
-import { waitUntil } from "@vercel/functions"; // Ensure this import works, or we mock it for non-vercel
+import { AuditRepository, CreateAuditLogDTO } from "../repositories/audit.repository";
+import { waitUntil } from "@vercel/functions";
+import { headers } from "next/headers";
 
 export class AuditService {
-  private auditRepository: AuditRepository;
+  constructor(private auditRepository: AuditRepository) {}
 
-  constructor(auditRepository: AuditRepository) {
-    this.auditRepository = auditRepository;
-  }
+  /**
+   * Fire-and-forget audit logger.
+   * Utilizes waitUntil to prevent blocking the main request response loop.
+   */
+  log(payload: Omit<CreateAuditLogDTO, "ip_address" | "user_agent">) {
+    const safeExecute = async () => {
+      try {
+        const reqHeaders = await headers();
+        const ip = reqHeaders.get("x-forwarded-for") || reqHeaders.get("x-real-ip") || null;
+        const ua = reqHeaders.get("user-agent") || null;
 
-  log(entry: AuditLogDTO) {
-    // We use waitUntil (if available in Next.js 14+) to execute this without blocking the response
-    // Vercel's Edge/Serverless handles waitUntil natively. 
-    // In Node.js, we can fallback to floating promises.
-    try {
-      import("@vercel/functions").then(({ waitUntil }) => {
-        waitUntil(this.auditRepository.log(entry));
-      }).catch(() => {
-        // Fallback for local dev if vercel functions package fails
-        this.auditRepository.log(entry).catch(console.error);
-      });
-    } catch (e) {
-      this.auditRepository.log(entry).catch(console.error);
-    }
+        await this.auditRepository.insert({
+          ...payload,
+          ip_address: ip,
+          user_agent: ua,
+        });
+      } catch (e) {
+        // We still use console.error here as a fallback because logger might trigger another audit
+        console.error("[AUDIT FAILURE] Failed to write audit log:", e);
+      }
+    };
+
+    waitUntil(safeExecute());
   }
 }

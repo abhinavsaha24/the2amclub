@@ -2,6 +2,7 @@ import { ProductRepository, InsertProductDTO, UpdateProductDTO } from "../reposi
 import { StorageService } from "./StorageService";
 import { AuditService } from "./AuditService";
 import { BusinessLogicError } from "../errors";
+import { logger } from "../logger";
 
 export class ProductService {
   constructor(
@@ -12,8 +13,9 @@ export class ProductService {
 
   async createProduct(
     adminId: string,
-    locationId: string,
-    payload: Omit<InsertProductDTO, "location_id" | "image">,
+    organizationId: string,
+    storeId: string,
+    payload: Omit<InsertProductDTO, "organization_id" | "store_id" | "image">,
     imageBuffer?: Buffer,
     imageMime?: string,
     imagePath?: string
@@ -29,7 +31,8 @@ export class ProductService {
       // 2. Database Insert
       const fullPayload: InsertProductDTO = {
         ...payload,
-        location_id: locationId,
+        organization_id: organizationId,
+        store_id: storeId,
         image: uploadedImagePath,
       };
 
@@ -37,8 +40,9 @@ export class ProductService {
 
       // 3. Audit Log
       this.auditService.log({
-        admin_id: adminId,
-        location_id: locationId,
+        organization_id: organizationId,
+        store_id: storeId,
+        user_id: adminId,
         action: "create",
         resource: "product",
         resource_id: product.id,
@@ -46,105 +50,91 @@ export class ProductService {
       });
 
       return product;
-    } catch (error: any) {
-      // 4. Compensation / Rollback
+    } catch (e: any) {
+      // 4. Compensating Transaction (Rollback Image)
       if (uploadedImagePath) {
-        try {
-          await this.storageService.deleteImage(uploadedImagePath);
-        } catch (cleanupError) {
-          console.error("[COMPENSATION FAILED] Could not delete orphaned image:", uploadedImagePath);
-          // In a truly robust system, we would log this to a dead-letter queue or cleanup table
-        }
+        this.storageService.deleteImage(uploadedImagePath).catch((error) => {
+          logger.error({ action: "cleanup_orphaned_image", error, uploadedImagePath });
+        });
       }
 
       this.auditService.log({
-        admin_id: adminId,
-        location_id: locationId,
+        organization_id: organizationId,
+        store_id: storeId,
+        user_id: adminId,
         action: "create_failed",
         resource: "product",
-        failure_reason: error.message,
+        failure_reason: e.message,
       });
 
-      throw new BusinessLogicError(`Failed to create product: ${error.message}`);
+      throw new BusinessLogicError("Failed to create product: " + e.message);
     }
   }
 
   async updateProduct(
     adminId: string,
-    locationId: string,
+    organizationId: string,
+    storeId: string,
     productId: string,
     payload: UpdateProductDTO,
-    oldImagePath?: string | null,
     newImageBuffer?: Buffer,
     newImageMime?: string,
-    newImagePath?: string
+    newImagePath?: string,
+    oldImagePath?: string | null
   ) {
     let uploadedImagePath: string | null = null;
 
     try {
-      // 1. Upload New Image if provided
       if (newImageBuffer && newImagePath) {
         uploadedImagePath = await this.storageService.uploadImage(newImagePath, newImageBuffer, newImageMime);
         payload.image = uploadedImagePath;
       }
 
-      // 2. Database Update
-      const product = await this.productRepository.update(productId, locationId, payload);
+      const product = await this.productRepository.update(productId, organizationId, storeId, payload);
 
-      // 3. Cleanup Old Image
-      if (uploadedImagePath && oldImagePath && oldImagePath !== uploadedImagePath && oldImagePath.trim() !== "") {
+      if (uploadedImagePath && oldImagePath) {
         this.storageService.deleteImage(oldImagePath).catch((e) => {
-          console.error("[CLEANUP ERROR] Failed to delete old image after product update:", e);
+          logger.error({ action: "cleanup_old_image", error: e, oldImage: oldImagePath });
         });
       }
 
-      // 4. Audit Log
       this.auditService.log({
-        admin_id: adminId,
-        location_id: locationId,
+        organization_id: organizationId,
+        store_id: storeId,
+        user_id: adminId,
         action: "update",
         resource: "product",
-        resource_id: productId,
-        after_value: product, // For strict compliance, fetch before_value as well, omitted for brevity unless strictly required
+        resource_id: product.id,
+        after_value: product,
       });
 
       return product;
-    } catch (error: any) {
-      // Rollback newly uploaded image
+    } catch (e: any) {
       if (uploadedImagePath) {
-        this.storageService.deleteImage(uploadedImagePath).catch(console.error);
+        this.storageService.deleteImage(uploadedImagePath).catch((e) => logger.error({ action: "delete_orphaned_image", error: e }));
       }
-
-      this.auditService.log({
-        admin_id: adminId,
-        location_id: locationId,
-        action: "update_failed",
-        resource: "product",
-        resource_id: productId,
-        failure_reason: error.message,
-      });
-
-      throw new BusinessLogicError(`Failed to update product: ${error.message}`);
+      throw new BusinessLogicError("Failed to update product: " + e.message);
     }
   }
 
-  async deleteProduct(adminId: string, locationId: string, productId: string, imagePath?: string | null) {
+  async deleteProduct(adminId: string, organizationId: string, storeId: string, productId: string, imagePath?: string | null) {
     try {
-      await this.productRepository.delete(productId);
+      await this.productRepository.delete(productId, organizationId, storeId);
 
       if (imagePath) {
-        this.storageService.deleteImage(imagePath).catch(console.error);
+        this.storageService.deleteImage(imagePath).catch((e) => logger.error({ action: "delete_product_image", error: e }));
       }
 
       this.auditService.log({
-        admin_id: adminId,
-        location_id: locationId,
+        organization_id: organizationId,
+        store_id: storeId,
+        user_id: adminId,
         action: "delete",
         resource: "product",
         resource_id: productId,
       });
-    } catch (error: any) {
-      throw new BusinessLogicError(`Failed to delete product: ${error.message}`);
+    } catch (e: any) {
+      throw new BusinessLogicError("Failed to delete product: " + e.message);
     }
   }
 }

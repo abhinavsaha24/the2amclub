@@ -6,7 +6,7 @@ import { ShoppingCart, Menu, X, Zap, Moon, Sun, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useCartStore } from "@/store/cartStore";
-import { useLocationStore } from "@/store/locationStore";
+import { useStoreStore } from "@/store/locationStore";
 import { cn } from "@/lib/cn";
 
 const navLinks = [
@@ -19,7 +19,7 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const totalItems = useCartStore((s) => s.totalItems());
-  const activeLocation = useLocationStore((s) => s.activeLocation);
+  const activeStore = useStoreStore((s) => s.activeStore);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -33,7 +33,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container-app flex h-16 items-center justify-between">
-        {/* Left: Logo & Location */}
+        {/* Left: Logo & Store */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground group-hover:opacity-90 transition-opacity">
@@ -44,13 +44,13 @@ export function Navbar() {
             </span>
           </Link>
 
-          {activeLocation && (
+          {activeStore && (
             <button
               onClick={() => router.push("/")}
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-full hover:bg-secondary/80 transition-colors"
             >
               <MapPin size={14} />
-              {activeLocation.name}
+              {activeStore.name}
             </button>
           )}
         </div>
@@ -118,11 +118,11 @@ export function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t bg-background">
           <div className="container-app py-4 flex flex-col gap-2">
-            {activeLocation && (
+            {activeStore && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-muted-foreground border-b pb-4 mb-2">
                 <MapPin size={16} />
                 Ordering from:{" "}
-                <span className="text-foreground">{activeLocation.name}</span>
+                <span className="text-foreground">{activeStore.name}</span>
               </div>
             )}
 

@@ -1,9 +1,10 @@
 import { BaseRepository } from "./base.repository";
 import { DatabaseError } from "../errors";
-import { Product } from "@/types"; // assuming this exists, if not we define inline or rely on any
+import { Product } from "@/types";
 
 export interface InsertProductDTO {
-  location_id: string;
+  organization_id: string;
+  store_id: string;
   name: string;
   category: string;
   description?: string | null;
@@ -19,11 +20,13 @@ export class ProductRepository extends BaseRepository<Product> {
     super("products");
   }
 
-  async findByLocationId(locationId: string): Promise<Product[]> {
-    const { data, error } = await this.client
+  async findByStoreId(organizationId: string, storeId: string): Promise<Product[]> {
+    const client = await this.getClient();
+    const { data, error } = await client
       .from(this.tableName)
       .select("*")
-      .eq("location_id", locationId)
+      .eq("organization_id", organizationId)
+      .eq("store_id", storeId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -34,7 +37,8 @@ export class ProductRepository extends BaseRepository<Product> {
   }
 
   async insert(product: InsertProductDTO): Promise<Product> {
-    const { data, error } = await this.client
+    const client = await this.getClient();
+    const { data, error } = await client
       .from(this.tableName)
       .insert(product)
       .select()
@@ -47,12 +51,14 @@ export class ProductRepository extends BaseRepository<Product> {
     return data as Product;
   }
 
-  async update(id: string, locationId: string, updates: UpdateProductDTO): Promise<Product> {
-    const { data, error } = await this.client
+  async update(id: string, organizationId: string, storeId: string, updates: UpdateProductDTO): Promise<Product> {
+    const client = await this.getClient();
+    const { data, error } = await client
       .from(this.tableName)
       .update(updates)
       .eq("id", id)
-      .eq("location_id", locationId)
+      .eq("organization_id", organizationId)
+      .eq("store_id", storeId)
       .select()
       .single();
 
@@ -61,5 +67,19 @@ export class ProductRepository extends BaseRepository<Product> {
     }
 
     return data as Product;
+  }
+
+  async delete(id: string, organizationId: string, storeId: string): Promise<void> {
+    const client = await this.getClient();
+    const { error } = await client
+      .from(this.tableName)
+      .delete()
+      .eq("id", id)
+      .eq("organization_id", organizationId)
+      .eq("store_id", storeId);
+      
+    if (error) {
+      throw new DatabaseError(`Failed to delete product: ${error.message}`);
+    }
   }
 }

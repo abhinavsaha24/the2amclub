@@ -1,4 +1,5 @@
 "use client";
+import { getStoreId } from "@/lib/storeAuth";
 
 import { useEffect, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -6,9 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   Save,
-  Check,
   Upload,
-  Store,
+  Store as StoreIcon,
   Info,
   MapPin,
   Banknote,
@@ -16,20 +16,19 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { getAdminSession } from "@/lib/adminAuth";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
-import type { Location } from "@/types";
-import { LocationSettingsSchema } from "@/lib/validators";
+import type { Store } from "@/types";
+import { UpdateStoreValidator } from "@/lib/validators";
 import { z } from "zod";
 import { getImageUrl } from "@/lib/utils";
 
-type SettingsFormData = z.infer<typeof LocationSettingsSchema>;
+type SettingsFormData = z.infer<typeof UpdateStoreValidator>;
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [locationId, setLocationId] = useState<string | null>(null);
+  const [locationId, setStoreId] = useState<string | null>(null);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -41,7 +40,7 @@ export default function AdminSettingsPage() {
     reset,
     formState: { errors },
   } = useForm<SettingsFormData>({
-    resolver: zodResolver(LocationSettingsSchema as any),
+    resolver: zodResolver(UpdateStoreValidator as any),
     defaultValues: {
       shop_open: true,
       notice: "",
@@ -51,27 +50,27 @@ export default function AdminSettingsPage() {
   });
 
   const fetchSettings = useCallback(async () => {
-    const locId = await getAdminSession();
-    if (!locId) return;
-    setLocationId(locId);
+    const storeId = await getStoreId();
+    if (!storeId) return;
+    setStoreId(storeId);
 
     const supabase = createClient();
     const { data } = await supabase
       .from("locations")
       .select("*")
-      .eq("id", locId)
+      .eq("id", storeId)
       .single();
 
     if (data) {
-      const loc = data as Location;
+      const loc = data as Store;
       reset({
         shop_open: loc.shop_open,
         notice: loc.notice || "",
         upi_id: loc.upi_id || "",
         pickup_address: loc.pickup_address || "",
       });
-      setExistingQrPath(loc.upi_qr_image);
-      setImagePreview(loc.upi_qr_image ? getImageUrl(loc.upi_qr_image) : null);
+      setExistingQrPath(loc.qr_code);
+      setImagePreview(loc.qr_code ? getImageUrl(loc.qr_code) : null);
     }
     setLoading(false);
   }, [reset]);
@@ -100,7 +99,7 @@ export default function AdminSettingsPage() {
     setSaving(true);
 
     const formData = new FormData();
-    formData.append("shop_open", data.shop_open.toString());
+    formData.append("shop_open", String(data.shop_open ?? false.toString()));
     if (data.notice) formData.append("notice", data.notice);
     if (data.upi_id) formData.append("upi_id", data.upi_id);
     if (data.pickup_address) formData.append("pickup_address", data.pickup_address);
@@ -125,8 +124,8 @@ export default function AdminSettingsPage() {
       }
 
       toast.success("Settings updated successfully!");
-      if (result.data?.upi_qr_image) {
-        setExistingQrPath(result.data.upi_qr_image);
+      if (result.data?.qr_code) {
+        setExistingQrPath(result.data.qr_code);
       }
       setImageFile(null);
     } catch (err: any) {
@@ -149,7 +148,7 @@ export default function AdminSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-3xl font-bold text-foreground">
-            Location Settings
+            Store Settings
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             Manage operations and payments for your location.
@@ -163,7 +162,7 @@ export default function AdminSettingsPage() {
           <div className="bg-card border border-border p-6 rounded-2xl shadow-sm space-y-6">
             <div className="flex items-center gap-3 border-b border-border pb-4 mb-4">
               <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                <Store size={20} />
+                <StoreIcon size={20} />
               </div>
               <h2 className="font-heading text-xl font-bold text-foreground">
                 Operations
@@ -210,6 +209,7 @@ export default function AdminSettingsPage() {
                   render={({ field }) => (
                     <input
                       {...field}
+                      value={field.value ?? ""}
                       type="text"
                       placeholder="e.g. Delivery might be delayed due to rain"
                       className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-foreground"
@@ -234,6 +234,7 @@ export default function AdminSettingsPage() {
                   render={({ field }) => (
                     <textarea
                       {...field}
+                      value={field.value ?? ""}
                       placeholder="e.g. Hostel Counter — Ground Floor"
                       className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none h-24 text-foreground"
                     />
@@ -267,6 +268,7 @@ export default function AdminSettingsPage() {
                   render={({ field }) => (
                     <input
                       {...field}
+                      value={field.value ?? ""}
                       type="text"
                       placeholder="e.g. 9876543210@ybl"
                       className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-foreground font-mono"

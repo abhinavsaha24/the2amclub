@@ -1,26 +1,30 @@
-# The 2AM Club
+# The 2AM Club (V4 Production)
 
-A multi-tenant location-scoped SaaS platform for campus food ordering. 
+The 2AM Club is a highly-scalable, multi-tenant SaaS platform built for college campus delivery services (hostels, libraries, etc.). 
 
-## Features
-- **Multi-Admin / Multi-Location:** Support for multiple distinct campus stores, hostels, or cafes.
-- **Custom Auth:** Streamlined `admin_code` authentication for location admins.
-- **Secure Storage:** Production-ready backend image processing (WebP/Sharp) using Supabase Service Role.
-- **UPI Integration:** Scan and pay via UPI with manual UTR verification.
+It supports hundreds of organizations and thousands of stores with absolute data isolation via Postgres Row Level Security (RLS) and Supabase Auth.
 
-## Documentation
-- [Deployment Guide (DEPLOYMENT.md)](./DEPLOYMENT.md) - Instructions for setting up Supabase and deploying to Vercel.
-- [System Architecture (ARCHITECTURE.md)](./ARCHITECTURE.md) - Detailed breakdown of the custom authentication flow and highly secure server-side storage architecture.
+## Architecture Highlights
+- **Framework**: Next.js 14 App Router
+- **Database**: Supabase PostgreSQL
+- **Auth**: `@supabase/ssr` with Role-Based Access Control
+- **Styling**: Tailwind CSS & Framer Motion
+- **Tenancy**: Multi-tenant via `organization_id` & `store_id` boundaries.
+- **Background Jobs**: Vercel `@vercel/functions` `waitUntil()` for compensating transactions.
 
-## Getting Started Locally
+## Security Posture
+- 100% Data Isolation at the database level.
+- Strict `Content-Security-Policy` and `HSTS` headers.
+- Middleware protection against unauthorized API access (`withStoreAdminApiHandler`).
+- Image processing (stripping EXIF) before uploading to S3 buckets.
 
-1. Create a `.env.local` file with your Supabase credentials (see `DEPLOYMENT.md`).
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Development Setup
+
+1. Copy `.env.example` to `.env.local`
+2. Populate the Supabase credentials.
+3. Run `npm install`
+4. Run `npm run type-check` to validate `env` structure.
+5. Run `npm run dev`
+
+## Deployment (Vercel)
+The project is configured for seamless Vercel deployment. Refer to [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for environment variables and branch protections.

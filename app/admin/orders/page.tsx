@@ -1,8 +1,8 @@
 "use client";
+import { getStoreId } from "@/lib/storeAuth";
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getAdminSession } from "@/lib/adminAuth";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
@@ -27,14 +27,14 @@ export default function AdminOrdersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
-    const locId = await getAdminSession();
-    if (!locId) return;
+    const storeId = await getStoreId();
+    if (!storeId) return;
 
     const supabase = createClient();
     const { data } = await supabase
       .from("orders")
       .select("*, order_items(product_id, qty, price, product:products(name))")
-      .eq("location_id", locId)
+      .eq("store_id", storeId)
       .order("created_at", { ascending: false });
 
     setOrders((data as Order[]) ?? []);

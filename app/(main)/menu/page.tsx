@@ -22,12 +22,12 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/store/cartStore";
-import { useLocationStore } from "@/store/locationStore";
+import { useStoreStore } from "@/store/locationStore";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatPrice, getImageUrl } from "@/lib/utils";
-import type { Product, Location } from "@/types";
+import type { Product, Store } from "@/types";
 
 const CATEGORIES = [
   "All",
@@ -54,9 +54,9 @@ export function MenuContent() {
   const router = useRouter();
   const initCategory = searchParams.get("category") ?? "All";
 
-  const { activeLocation } = useLocationStore();
-  const [liveLocation, setLiveLocation] = useState<Location | null>(
-    activeLocation,
+  const { activeStore } = useStoreStore();
+  const [liveStore, setLiveStore] = useState<Store | null>(
+    activeStore,
   );
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -68,7 +68,7 @@ export function MenuContent() {
     useCartStore();
 
   const fetchData = useCallback(async () => {
-    if (!activeLocation) {
+    if (!activeStore) {
       router.replace("/");
       return;
     }
@@ -78,20 +78,20 @@ export function MenuContent() {
       supabase
         .from("products")
         .select("*")
-        .eq("location_id", activeLocation.id)
+        .eq("store_id", activeStore.id)
         .eq("is_active", true)
         .order("category"),
       supabase
         .from("locations")
         .select("*")
-        .eq("id", activeLocation.id)
+        .eq("id", activeStore.id)
         .single(),
     ]);
 
     setProducts(prods ?? []);
-    if (loc) setLiveLocation(loc);
+    if (loc) setLiveStore(loc);
     setLoading(false);
-  }, [activeLocation, router]);
+  }, [activeStore, router]);
 
   useEffect(() => {
     fetchData();
@@ -107,7 +107,7 @@ export function MenuContent() {
   });
 
   // If no location, prevent rendering anything until redirect happens
-  if (!activeLocation) return null;
+  if (!activeStore) return null;
 
   if (loading) {
     return (
@@ -128,12 +128,12 @@ export function MenuContent() {
           Our Menu
         </h1>
         <p className="text-muted-foreground font-medium">
-          Ordering from {liveLocation?.name}
+          Ordering from {liveStore?.name}
         </p>
       </div>
 
       {/* Shop Closed Notice */}
-      {liveLocation && !liveLocation.shop_open && (
+      {liveStore && !liveStore.shop_open && (
         <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-start gap-3">
           <AlertCircle className="text-destructive shrink-0 mt-0.5" size={20} />
           <div>
@@ -141,7 +141,7 @@ export function MenuContent() {
               Shop is Closed
             </p>
             <p className="text-destructive/80 text-sm font-medium mt-0.5">
-              {liveLocation.notice ??
+              {liveStore.notice ??
                 "This location is currently closed. Please check back later."}
             </p>
           </div>
@@ -149,10 +149,10 @@ export function MenuContent() {
       )}
 
       {/* Notice Banner */}
-      {liveLocation?.notice && liveLocation.shop_open && (
+      {liveStore?.notice && liveStore.shop_open && (
         <div className="mb-6 p-3 rounded-xl bg-primary/10 text-primary text-sm font-medium flex items-center gap-2 border border-primary/20">
           <AlertCircle size={16} className="shrink-0" />
-          {liveLocation.notice}
+          {liveStore.notice}
         </div>
       )}
 
@@ -213,7 +213,7 @@ export function MenuContent() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           <AnimatePresence mode="popLayout">
-            {filtered.map((product, i) => {
+            {filtered.map((product, _i) => {
               const cartQty = getCartQty(product.id);
               const outOfStock = product.stock === 0;
               const lowStock = product.stock <= 3 && product.stock > 0;
@@ -295,7 +295,7 @@ export function MenuContent() {
                               addItem(product);
                               toast.success(`${product.name} added to cart!`);
                             }}
-                            disabled={!liveLocation?.shop_open}
+                            disabled={!liveStore?.shop_open}
                           >
                             Add
                           </Button>

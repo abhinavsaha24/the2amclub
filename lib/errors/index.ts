@@ -21,9 +21,15 @@ export class ValidationError extends BaseError {
   }
 }
 
+export class AuthorizationError extends BaseError {
+  constructor(message: string = "Unauthorized", data?: any) {
+    super(message, ApiErrors.AUTHORIZATION_ERROR, 403, data);
+  }
+}
+
 export class AuthenticationError extends BaseError {
-  constructor(message: string = "Unauthorized") {
-    super(message, ApiErrors.UNAUTHORIZED, 401);
+  constructor(message: string = "Unauthenticated", data?: any) {
+    super(message, ApiErrors.UNAUTHENTICATED, 401, data);
   }
 }
 

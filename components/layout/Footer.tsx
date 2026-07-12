@@ -8,7 +8,7 @@ export function Footer() {
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
 
       <div className="container-app relative z-10 py-10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
           {/* Brand */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 group">
@@ -63,7 +63,7 @@ export function Footer() {
             <p className="text-text-muted text-sm font-body">
               Serving the night owls 🦉
             </p>
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-4 pt-4">
               <a
                 href="#"
                 className="p-2 rounded-lg bg-white/5 text-text-muted hover:text-purple-400 hover:bg-purple-500/10 transition-all"
@@ -89,7 +89,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="mt-12 pt-8 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-text-muted text-xs font-body">
             © {new Date().getFullYear()} The 2AM Club. All rights reserved.
           </p>

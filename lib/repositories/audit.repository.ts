@@ -1,18 +1,19 @@
 import { BaseRepository } from "./base.repository";
 import { DatabaseError } from "../errors";
 
-export interface AuditLogDTO {
-  admin_id?: string;
-  location_id?: string;
+export interface CreateAuditLogDTO {
+  organization_id?: string | null;
+  store_id?: string | null;
+  user_id?: string | null;
   action: string;
   resource: string;
-  resource_id?: string;
+  resource_id?: string | null;
   before_value?: any;
   after_value?: any;
-  ip_address?: string;
-  user_agent?: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
   success?: boolean;
-  failure_reason?: string;
+  failure_reason?: string | null;
 }
 
 export class AuditRepository extends BaseRepository<any> {
@@ -20,17 +21,12 @@ export class AuditRepository extends BaseRepository<any> {
     super("audit_logs");
   }
 
-  async log(entry: AuditLogDTO): Promise<void> {
-    // Audit logs should be fire-and-forget in most cases, 
-    // but we await here to ensure it's written before functions terminate if needed.
-    const { error } = await this.client
-      .from(this.tableName)
-      .insert(entry);
-
+  async insert(log: CreateAuditLogDTO): Promise<void> {
+    const client = await this.getClient();
+    const { error } = await client.from(this.tableName).insert(log);
+    
     if (error) {
-      console.error("[AUDIT LOG ERROR]", error);
-      // We explicitly DO NOT throw a DatabaseError here. 
-      // Audit log failures should not break the main business logic flow.
+      throw new DatabaseError(`Failed to insert audit log: ${error.message}`);
     }
   }
 }

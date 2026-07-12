@@ -1,4 +1,5 @@
 "use client";
+import { getStoreId } from "@/lib/storeAuth";
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,7 +17,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getAdminSession } from "@/lib/adminAuth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -25,7 +25,7 @@ import { Modal } from "@/components/ui/Modal";
 import { toast } from "sonner";
 import { formatPrice, getImageUrl } from "@/lib/utils";
 import type { Product } from "@/types";
-import { ProductSchema } from "@/lib/validators";
+import { InsertProductValidator } from "@/lib/validators";
 import { z } from "zod";
 
 const CATEGORIES = [
@@ -37,12 +37,12 @@ const CATEGORIES = [
   "Snacks",
 ];
 
-type ProductFormData = z.infer<typeof ProductSchema>;
+type ProductFormData = z.infer<typeof InsertProductValidator>;
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [locationId, setLocationId] = useState<string | null>(null);
+  const [locationId, setStoreId] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -55,10 +55,9 @@ export default function AdminProductsPage() {
     control,
     handleSubmit,
     reset,
-    setValue,
     formState: { errors },
   } = useForm<ProductFormData>({
-    resolver: zodResolver(ProductSchema as any),
+    resolver: zodResolver(InsertProductValidator as any),
     defaultValues: {
       name: "",
       category: "Noodles",
@@ -70,15 +69,15 @@ export default function AdminProductsPage() {
   });
 
   const fetchProducts = useCallback(async () => {
-    const locId = await getAdminSession();
-    if (!locId) return;
-    setLocationId(locId);
+    const storeId = await getStoreId();
+    if (!storeId) return;
+    setStoreId(storeId);
 
     const supabase = createClient();
     const { data } = await supabase
       .from("products")
       .select("*")
-      .eq("location_id", locId)
+      .eq("store_id", storeId)
       .order("category")
       .order("name");
 
@@ -434,6 +433,7 @@ export default function AdminProductsPage() {
               render={({ field }) => (
                 <textarea
                   {...field}
+                  value={field.value ?? ""}
                   className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none h-20 text-foreground"
                   placeholder="Optional description…"
                 />

@@ -14,16 +14,16 @@ export async function GET() {
   };
 
   try {
-    const { data: dbData, error: dbError } = await supabase.from("locations").select("id").limit(1);
+    const { error: dbError } = await supabase.from("locations").select("id").limit(1);
     health.database = dbError ? "error" : "healthy";
-  } catch (e) {
+  } catch {
     health.database = "error";
   }
 
   try {
-    const { data: storageData, error: storageError } = await supabase.storage.getBucket("product-images");
+    const { error: storageError } = await supabase.storage.getBucket("product-images");
     health.storage = storageError ? "error" : "healthy";
-  } catch (e) {
+  } catch {
     health.storage = "error";
   }
 

@@ -34,7 +34,7 @@ const features = [
 
 const steps = [
   {
-    title: "Select Location",
+    title: "Select Store",
     desc: "Choose your hostel block or campus cafe from the home page.",
   },
   {

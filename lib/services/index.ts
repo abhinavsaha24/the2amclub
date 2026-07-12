@@ -1,28 +1,23 @@
-import { ProductRepository } from "../repositories/products.repository";
-import { LocationRepository } from "../repositories/locations.repository";
-import { AuditRepository } from "../repositories/audit.repository";
-
+import { ProductService } from "./ProductService";
+import { StoreService } from "./StoreService";
 import { StorageService } from "./StorageService";
 import { AuditService } from "./AuditService";
-import { ProductService } from "./ProductService";
+import { AuthService } from "./AuthService";
+import { AnalyticsService } from "./AnalyticsService";
 
-import { LocationService } from "./LocationService";
+import { ProductRepository } from "../repositories/products.repository";
+import { StoreRepository } from "../repositories/stores.repository";
+import { AuditRepository } from "../repositories/audit.repository";
 
 // Repositories
 const productRepository = new ProductRepository();
-const locationRepository = new LocationRepository();
+const storeRepository = new StoreRepository();
 const auditRepository = new AuditRepository();
 
 // Services
 export const storageService = new StorageService();
 export const auditService = new AuditService(auditRepository);
-export const productService = new ProductService(
-  productRepository,
-  storageService,
-  auditService
-);
-export const locationService = new LocationService(
-  locationRepository,
-  storageService,
-  auditService
-);
+export const productService = new ProductService(productRepository, storageService, auditService);
+export const storeService = new StoreService(storeRepository, storageService, auditService);
+export const authService = new AuthService();
+export const analyticsService = new AnalyticsService();
