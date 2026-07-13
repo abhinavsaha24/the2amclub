@@ -1,22 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -62,12 +47,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable}`}
-      suppressHydrationWarning
-    >
-      <body className="font-body antialiased min-h-dvh">
+    <html lang="en" suppressHydrationWarning>
+      <body className="font-sans antialiased min-h-dvh">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
@@ -79,13 +60,13 @@ export default function RootLayout({
           {/* Toast notifications */}
           <Toaster
             position="top-right"
-            toastOptions={{
-              className: "bg-background text-foreground border-border",
-              style: {
-                fontFamily: "var(--font-inter)",
+          toastOptions={{
+            className: "bg-background text-foreground border-border",
+            style: {
+                fontFamily: "var(--font-sans)",
               },
-            }}
-          />
+          }}
+        />
         </ThemeProvider>
       </body>
     </html>

@@ -302,14 +302,21 @@ BEGIN
     exists (select 1 from orders where orders.id = order_items.order_id and user_belongs_to_store(orders.store_id))
   );
 
-  -- 6. Store Members
+  -- 6. Profiles
+  DROP POLICY IF EXISTS "Users Read Own Profile" ON profiles;
+  CREATE POLICY "Users Read Own Profile" ON profiles
+    FOR SELECT
+    TO authenticated
+    USING ((select auth.uid()) = id);
+
+  -- 7. Store Members
   CREATE POLICY "Members Read Themselves" ON store_members FOR SELECT USING (profile_id = auth.uid() OR user_belongs_to_store(store_id));
   -- Inserting members is handled securely by Service Role via invitation consumption
 
-  -- 7. Audit Logs
+  -- 8. Audit Logs
   CREATE POLICY "Store Members Manage Audit Logs" ON audit_logs FOR ALL USING (user_belongs_to_store(store_id));
 
-  -- 8. Invitation Codes
+  -- 9. Invitation Codes
   CREATE POLICY "Store Members Manage Invitations" ON invitation_codes FOR ALL USING (user_belongs_to_store(store_id));
 
   RAISE NOTICE '✅ Strict Tenant Isolation RLS enabled';
