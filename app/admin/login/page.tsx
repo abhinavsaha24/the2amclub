@@ -32,8 +32,9 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/admin/products");
-    router.refresh();
+    // Hard navigation ensures Supabase auth cookie is fully propagated
+    // before the admin layout's auth check runs.
+    window.location.href = "/admin/products";
   };
 
   return (
