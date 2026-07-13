@@ -21,8 +21,11 @@ type Step = "DETAILS" | "PAYMENT" | "SUCCESS";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, totalPrice, clearCart } = useCartStore();
+  const { itemsByStore, totalPrice, clearCart } = useCartStore();
   const { activeStore } = useStoreStore();
+
+  const storeId = activeStore?.id || "";
+  const items = storeId ? itemsByStore[storeId] || [] : [];
 
   const [step, setStep] = useState<Step>("DETAILS");
   const [mounted, setMounted] = useState(false);
@@ -91,7 +94,7 @@ export default function CheckoutPage() {
       if (!res.ok) throw new Error(data.error || "Failed to place order");
 
       setOrderInfo({ id: data.data.order_id, no: data.data.order_no });
-      clearCart();
+      clearCart(storeId);
       setStep("SUCCESS");
       toast.success("Order placed successfully!");
     } catch (err: any) {
@@ -182,7 +185,7 @@ export default function CheckoutPage() {
                     Total to Pay
                   </span>
                   <span className="font-heading text-2xl font-bold">
-                    {formatPrice(totalPrice())}
+                    {formatPrice(storeId ? totalPrice(storeId) : 0)}
                   </span>
                 </div>
 
@@ -228,7 +231,7 @@ export default function CheckoutPage() {
                 Scan with any UPI app
               </p>
               <div className="font-heading text-4xl font-bold text-foreground mb-8">
-                {formatPrice(totalPrice())}
+                {formatPrice(storeId ? totalPrice(storeId) : 0)}
               </div>
 
               {/* QR Code */}

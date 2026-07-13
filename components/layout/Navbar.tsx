@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useParams } from "next/navigation";
 import { ShoppingCart, Menu, X, Zap, Moon, Sun, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
@@ -9,21 +9,24 @@ import { useCartStore } from "@/store/cartStore";
 import { useStoreStore } from "@/store/storeStore";
 import { cn } from "@/lib/cn";
 
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/menu", label: "Menu" },
-  { href: "/about", label: "About" },
-];
-
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const totalItems = useCartStore((s) => s.totalItems());
+  const params = useParams();
   const activeStore = useStoreStore((s) => s.activeStore);
+  
+  // Scope cart by store if active
+  const totalItems = useCartStore((s) => activeStore ? s.totalItems(activeStore.id) : 0);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
+  const navLinks = params.orgSlug && params.storeSlug ? [
+    { href: "/", label: "Home" },
+    { href: `/${params.orgSlug}/${params.storeSlug}/menu`, label: "Menu" },
+    { href: `/${params.orgSlug}/${params.storeSlug}/about`, label: "About" },
+  ] : [{ href: "/", label: "Home" }];
 
   useEffect(() => setMounted(true), []);
 
@@ -56,25 +59,27 @@ export function Navbar() {
         </div>
 
         {/* Center: Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1 bg-secondary rounded-full p-1">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-                )}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+        {activeStore && (
+          <nav className="hidden md:flex items-center gap-1 bg-secondary rounded-full p-1">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+                  )}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
@@ -90,18 +95,20 @@ export function Navbar() {
           )}
 
           {/* Cart */}
-          <Link
-            href="/cart"
-            className="relative p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors group"
-            aria-label={`Cart with ${totalItems} items`}
-          >
-            <ShoppingCart size={20} />
-            {totalItems > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
-                {totalItems > 99 ? "99+" : totalItems}
-              </span>
-            )}
-          </Link>
+          {activeStore && (
+            <Link
+              href={`/${params.orgSlug}/${params.storeSlug}/cart`}
+              className="relative p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors group"
+              aria-label={`Cart with ${totalItems} items`}
+            >
+              <ShoppingCart size={20} />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
+                  {totalItems > 99 ? "99+" : totalItems}
+                </span>
+              )}
+            </Link>
+          )}
 
           {/* Mobile Menu Toggle */}
           <button
@@ -126,7 +133,7 @@ export function Navbar() {
               </div>
             )}
 
-            {navLinks.map((link) => {
+            {activeStore && navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link

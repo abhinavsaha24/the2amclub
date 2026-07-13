@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import {
   Plus,
   Minus,
@@ -21,9 +21,13 @@ import { Spinner } from "@/components/ui/Spinner";
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, updateQty, removeItem, totalItems, totalPrice } =
+  const { itemsByStore, updateQty, removeItem, totalItems, totalPrice } =
     useCartStore();
   const { activeStore } = useStoreStore();
+  const params = useParams();
+  
+  const storeId = activeStore?.id || "";
+  const items = storeId ? itemsByStore[storeId] || [] : [];
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -77,7 +81,7 @@ export default function CartPage() {
           )}
         </div>
         <span className="bg-secondary text-secondary-foreground text-sm font-bold px-3 py-1 rounded-full">
-          {totalItems()} Items
+          {storeId ? totalItems(storeId) : 0} Items
         </span>
       </div>
 
@@ -127,7 +131,7 @@ export default function CartPage() {
                     {/* Quantity Controls */}
                     <div className="flex items-center gap-1 bg-secondary rounded-lg p-1 border border-border">
                       <button
-                        onClick={() => updateQty(item.product.id, item.qty - 1)}
+                        onClick={() => updateQty(storeId, item.product.id, item.qty - 1)}
                         className="w-8 h-8 flex items-center justify-center rounded-md bg-background border shadow-sm text-foreground hover:bg-muted transition-colors"
                       >
                         <Minus size={14} />
@@ -136,7 +140,7 @@ export default function CartPage() {
                         {item.qty}
                       </span>
                       <button
-                        onClick={() => updateQty(item.product.id, item.qty + 1)}
+                        onClick={() => updateQty(storeId, item.product.id, item.qty + 1)}
                         className="w-8 h-8 flex items-center justify-center rounded-md bg-background border shadow-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                         disabled={item.qty >= item.product.stock}
                       >
@@ -146,7 +150,7 @@ export default function CartPage() {
 
                     {/* Remove Button */}
                     <button
-                      onClick={() => removeItem(item.product.id)}
+                      onClick={() => removeItem(storeId, item.product.id)}
                       className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                       aria-label="Remove item"
                     >
@@ -168,9 +172,9 @@ export default function CartPage() {
 
             <div className="flex flex-col gap-4 text-sm mb-6 border-b border-border pb-6">
               <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal ({totalItems()} items)</span>
+                <span>Subtotal ({storeId ? totalItems(storeId) : 0} items)</span>
                 <span className="text-foreground font-medium">
-                  {formatPrice(totalPrice())}
+                  {formatPrice(storeId ? totalPrice(storeId) : 0)}
                 </span>
               </div>
               <div className="flex justify-between text-muted-foreground">
@@ -184,7 +188,7 @@ export default function CartPage() {
             <div className="flex justify-between items-center mb-8">
               <span className="font-medium text-foreground">Total to Pay</span>
               <span className="font-heading text-2xl font-bold text-foreground">
-                {formatPrice(totalPrice())}
+                {formatPrice(storeId ? totalPrice(storeId) : 0)}
               </span>
             </div>
 
@@ -192,7 +196,7 @@ export default function CartPage() {
               variant="default"
               size="lg"
               className="w-full rounded-xl"
-              onClick={() => router.push("/checkout")}
+              onClick={() => router.push(`/${params.orgSlug}/${params.storeSlug}/checkout`)}
               rightIcon={<ArrowRight size={18} />}
             >
               Proceed to Checkout

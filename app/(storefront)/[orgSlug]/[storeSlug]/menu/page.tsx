@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
   Search,
@@ -52,6 +52,7 @@ const CategoryIcons: Record<string, React.ReactNode> = {
 export function MenuContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const params = useParams();
   const initCategory = searchParams.get("category") ?? "All";
 
   const { activeStore } = useStoreStore();
@@ -64,8 +65,11 @@ export function MenuContent() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(initCategory);
 
-  const { addItem, items, updateQty, removeItem, totalItems, totalPrice } =
+  const { addItem, itemsByStore, updateQty, removeItem, totalItems, totalPrice } =
     useCartStore();
+  
+  const storeId = activeStore?.id || "";
+  const items = storeId ? itemsByStore[storeId] || [] : [];
 
   const fetchData = useCallback(async () => {
     if (!activeStore) {
@@ -292,7 +296,7 @@ export function MenuContent() {
                             size="sm"
                             leftIcon={<Plus size={14} />}
                             onClick={() => {
-                              addItem(product);
+                              addItem(storeId, product);
                               toast.success(`${product.name} added to cart!`);
                             }}
                             disabled={!liveStore?.shop_open}
@@ -303,8 +307,8 @@ export function MenuContent() {
                           <div className="flex items-center gap-3 bg-secondary rounded-lg p-1 border border-border">
                             <button
                               onClick={() => {
-                                if (cartQty === 1) removeItem(product.id);
-                                else updateQty(product.id, cartQty - 1);
+                                if (cartQty === 1) removeItem(storeId, product.id);
+                                else updateQty(storeId, product.id, cartQty - 1);
                               }}
                               className="w-7 h-7 flex items-center justify-center rounded-md bg-background border shadow-sm text-foreground hover:bg-muted transition-colors"
                             >
@@ -316,7 +320,7 @@ export function MenuContent() {
                             <button
                               onClick={() => {
                                 if (cartQty < product.stock) {
-                                  updateQty(product.id, cartQty + 1);
+                                  updateQty(storeId, product.id, cartQty + 1);
                                 } else {
                                   toast.error("Cannot exceed available stock");
                                 }
@@ -339,14 +343,14 @@ export function MenuContent() {
 
       {/* Floating Cart Button (Mobile) */}
       <AnimatePresence>
-        {totalItems() > 0 && (
+        {totalItems(storeId) > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
             className="fixed bottom-6 right-6 z-40 md:hidden"
           >
-            <Link href="/cart">
+            <Link href={`/${params.orgSlug}/${params.storeSlug}/cart`}>
               <Button
                 variant="default"
                 size="lg"
@@ -355,10 +359,10 @@ export function MenuContent() {
               >
                 <div className="flex flex-col items-start ml-2 text-left">
                   <span className="text-xs font-semibold opacity-90">
-                    {totalItems()} items
+                    {totalItems(storeId)} items
                   </span>
                   <span className="font-heading font-bold">
-                    {formatPrice(totalPrice())}
+                    {formatPrice(totalPrice(storeId))}
                   </span>
                 </div>
               </Button>

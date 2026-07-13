@@ -35,7 +35,7 @@ const features = [
 const steps = [
   {
     title: "Select Store",
-    desc: "Choose your hostel block or campus cafe from the home page.",
+    desc: "Choose your location from the home page.",
   },
   {
     title: "Browse the Live Menu",
@@ -58,7 +58,7 @@ const steps = [
     desc: "A unique order ID is generated. Show it at the counter.",
   },
   {
-    title: "Collect Your Food",
+    title: "Collect Your Order",
     desc: "Walk up when you hear your number (or check the order tracker).",
   },
 ];
@@ -73,11 +73,11 @@ export default function AboutPage() {
         className="text-center mb-16 space-y-4"
       >
         <h1 className="font-heading text-5xl md:text-6xl font-bold tracking-tight text-foreground">
-          About The 2AM Club
+          About Us
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-          We started with a simple idea: hungry engineering students shouldn't
-          have to fumble with cash at midnight. So we built something better.
+          We started with a simple idea: hungry people shouldn't
+          have to fumble with cash late at night. So we built something better.
         </p>
       </motion.div>
 
@@ -99,15 +99,15 @@ export default function AboutPage() {
             Our Mission
           </h2>
           <p className="text-muted-foreground mt-4 max-w-xl mx-auto">
-            To be the premium digital layer for hostel food — making every
-            late-night craving faster, smarter, and more satisfying. We believe
+            To be the premium digital layer for local food — making every
+            craving faster, smarter, and more satisfying. We believe
             that a great ordering experience should be as good as the food
             itself.
           </p>
         </div>
 
         <h3 className="font-heading text-2xl font-bold text-center mb-8 text-foreground">
-          Why Students Love Us
+          Why Customers Love Us
         </h3>
         <div className="grid md:grid-cols-2 gap-4">
           {features.map((f, i) => (

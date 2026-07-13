@@ -33,12 +33,12 @@ BEGIN
 
   -- 1. Create Organization
   INSERT INTO organizations (slug, name, theme_color)
-  VALUES ('thapar', 'Thapar University', '#FF5733')
+  VALUES ('demo', 'Demo Organization', '#a855f7')
   RETURNING id INTO v_org_id;
 
   -- 2. Create Store
   INSERT INTO stores (organization_id, slug, name, pickup_address, shop_open)
-  VALUES (v_org_id, 'hostel-j', 'Hostel J Canteen', 'Ground Floor, Hostel J', true)
+  VALUES (v_org_id, 'store-1', 'Demo Store', 'Main Block, Ground Floor', true)
   RETURNING id INTO v_store_id;
 
   -- 3. Link Super Admin to Store

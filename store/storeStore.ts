@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Store } from "@/types";
-import { useCartStore } from "./cartStore";
 
 interface StoreStore {
   activeStore: Store | null;
@@ -15,7 +14,6 @@ export const useStoreStore = create<StoreStore>()(
       activeStore: null,
       setStore: (store) => {
         set({ activeStore: store });
-        useCartStore.getState().clearCart();
       },
       clearStore: () => set({ activeStore: null }),
     }),

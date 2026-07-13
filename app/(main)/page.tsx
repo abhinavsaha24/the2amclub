@@ -56,10 +56,10 @@ export default async function HomePage() {
       <div className="max-w-6xl mx-auto pt-12">
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
-            Welcome to The 2AM Club
+            Welcome
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Select your campus store to start ordering.
+            Select a location to start ordering.
           </p>
         </div>
 
@@ -72,7 +72,7 @@ export default async function HomePage() {
               {stores.map((store) => (
                 <Link
                   key={store.id}
-                  href={`/store/${orgSlug}/${store.slug}`}
+                  href={`/${orgSlug}/${store.slug}/menu`}
                   className="block bg-white dark:bg-gray-900 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-800 group"
                 >
                   <div className="h-32 bg-gray-200 dark:bg-gray-800 relative">
