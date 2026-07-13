@@ -228,7 +228,7 @@ export default function AdminSettingsPage() {
                     <textarea
                       {...field}
                       value={field.value ?? ""}
-                      placeholder="e.g. Hostel Counter — Ground Floor"
+                      placeholder="e.g. Main Building — Ground Floor"
                       className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none h-24 text-foreground"
                     />
                   )}

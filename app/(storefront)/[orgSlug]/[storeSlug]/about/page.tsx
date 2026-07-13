@@ -16,7 +16,7 @@ const features = [
     icon: <Clock size={24} className="text-primary" />,
     title: "Always Open",
     description:
-      "Live from 10 PM to 4 AM. Because hunger doesn't follow a schedule.",
+      "Open when you need us most. Check the store's opening hours on the home page.",
   },
   {
     icon: <ShieldCheck size={24} className="text-primary" />,

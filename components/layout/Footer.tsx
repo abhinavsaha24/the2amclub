@@ -23,7 +23,7 @@ export function Footer() {
               Where Hunger Never Sleeps.
             </p>
             <p className="text-text-muted text-xs font-body">
-              Late-night hostel food ordering — fast, simple, and always open.
+              Premium food ordering — fast, simple, and reliable.
             </p>
           </div>
 
@@ -54,14 +54,10 @@ export function Footer() {
           {/* Info */}
           <div className="space-y-3">
             <h4 className="text-white font-heading font-semibold text-sm">
-              Hours
+              Contact
             </h4>
             <p className="text-text-muted text-sm font-body">
-              Open{" "}
-              <span className="text-cyan-400 font-semibold">10 PM – 4 AM</span>
-            </p>
-            <p className="text-text-muted text-sm font-body">
-              Serving the night owls 🦉
+              Need help? Reach out to us.
             </p>
             <div className="flex items-center gap-4 pt-4">
               <a

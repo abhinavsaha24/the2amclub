@@ -9,13 +9,13 @@ export const metadata: Metadata = {
     default: "The 2AM Club — Where Hunger Never Sleeps",
   },
   description:
-    "Premium late-night food ordering for engineering college hostels. Browse live inventory, pay online, and collect your order. Open 10 PM – 4 AM.",
+    "Premium food ordering platform. Browse live inventory, pay online, and collect your order.",
   keywords: [
-    "hostel food",
-    "late night food",
-    "2am food",
-    "engineering college canteen",
-    "online food ordering",
+    "food ordering",
+    "online food",
+    "canteen",
+    "cafe",
+    "quick commerce",
   ],
   authors: [{ name: "The 2AM Club" }],
   creator: "The 2AM Club",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     locale: "en_IN",
     title: "The 2AM Club — Where Hunger Never Sleeps",
     description:
-      "Premium late-night food ordering for engineering college hostels.",
+      "Premium food ordering platform.",
     siteName: "The 2AM Club",
   },
   manifest: "/manifest.json",
