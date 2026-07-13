@@ -1,5 +1,6 @@
 "use client";
-import { getStoreId } from "@/lib/storeAuth";
+import { useAdminStore } from "@/store/adminStore";
+import { apiClient, ApiError } from "@/lib/api/client";
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,7 +43,7 @@ type ProductFormData = z.infer<typeof InsertProductValidator>;
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [locationId, setStoreId] = useState<string | null>(null);
+  const activeStoreId = useAdminStore((s) => s.activeStoreId);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -69,21 +70,19 @@ export default function AdminProductsPage() {
   });
 
   const fetchProducts = useCallback(async () => {
-    const storeId = await getStoreId();
-    if (!storeId) return;
-    setStoreId(storeId);
+    if (!activeStoreId) return;
 
     const supabase = createClient();
     const { data } = await supabase
       .from("products")
       .select("*")
-      .eq("store_id", storeId)
+      .eq("store_id", activeStoreId)
       .order("category")
       .order("name");
 
     setProducts((data as Product[]) ?? []);
     setLoading(false);
-  }, []);
+  }, [activeStoreId]);
 
   useEffect(() => {
     fetchProducts();
@@ -135,7 +134,7 @@ export default function AdminProductsPage() {
   };
 
   const onSubmit = async (data: ProductFormData) => {
-    if (!locationId) return;
+    if (!activeStoreId) return;
     setSaving(true);
 
     const formData = new FormData();
@@ -157,22 +156,16 @@ export default function AdminProductsPage() {
     }
 
     try {
-      const res = await fetch("/api/v1/admin/products", {
-        method: editingProduct ? "PATCH" : "POST",
-        body: formData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error?.message || "Something went wrong");
+      if (editingProduct) {
+        await apiClient.patch("/api/v1/admin/products", formData);
+      } else {
+        await apiClient.post("/api/v1/admin/products", formData);
       }
-
       toast.success(editingProduct ? "Product updated!" : "Product created!");
       setModalOpen(false);
       fetchProducts();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
       setSaving(false);
     }
@@ -190,16 +183,11 @@ export default function AdminProductsPage() {
     // Don't append image to preserve existing
 
     try {
-      const res = await fetch("/api/v1/admin/products", {
-        method: "PATCH",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Toggle failed");
-      
+      await apiClient.patch("/api/v1/admin/products", formData);
       toast.success(`${product.name} ${product.is_active ? "hidden" : "visible"}`);
       fetchProducts();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Toggle failed");
     }
   };
 
@@ -211,13 +199,12 @@ export default function AdminProductsPage() {
     }
 
     try {
-      const res = await fetch(url, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      await apiClient.delete(url);
       toast.success("Product deleted");
       setDeleteId(null);
       fetchProducts();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Delete failed");
     }
   };
 

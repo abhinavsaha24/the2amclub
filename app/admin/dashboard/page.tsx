@@ -1,5 +1,5 @@
 "use client";
-import { getStoreId } from "@/lib/storeAuth";
+import { useAdminStore } from "@/store/adminStore";
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -25,10 +25,10 @@ export default function AdminDashboardPage() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const activeStoreId = useAdminStore((s) => s.activeStoreId);
 
   const fetchData = useCallback(async () => {
-    const storeId = await getStoreId();
-    if (!storeId) return;
+    if (!activeStoreId) return;
 
     const supabase = createClient();
     const today = new Date();
@@ -43,24 +43,24 @@ export default function AdminDashboardPage() {
       supabase
         .from("orders")
         .select("total")
-        .eq("store_id", storeId)
+        .eq("store_id", activeStoreId)
         .in("status", ["confirmed", "ready", "collected"])
         .gte("created_at", today.toISOString()),
       supabase
         .from("orders")
         .select("total")
-        .eq("store_id", storeId)
+        .eq("store_id", activeStoreId)
         .in("status", ["confirmed", "ready", "collected"]),
       supabase
         .from("orders")
         .select("*")
-        .eq("store_id", storeId)
+        .eq("store_id", activeStoreId)
         .order("created_at", { ascending: false })
         .limit(10),
       supabase
         .from("products")
         .select("*")
-        .eq("store_id", storeId)
+        .eq("store_id", activeStoreId)
         .gt("stock", 0)
         .lte("stock", 5)
         .order("stock"),
@@ -76,7 +76,7 @@ export default function AdminDashboardPage() {
     setRecentOrders((recent as Order[]) ?? []);
     setLowStockProducts((lowStock as Product[]) ?? []);
     setLoading(false);
-  }, []);
+  }, [activeStoreId]);
 
   useEffect(() => {
     fetchData();
@@ -84,8 +84,7 @@ export default function AdminDashboardPage() {
 
   // CSV Export
   const exportCSV = async () => {
-    const storeId = await getStoreId();
-    if (!storeId) return;
+    if (!activeStoreId) return;
 
     const supabase = createClient();
     const { data } = await supabase
@@ -93,7 +92,7 @@ export default function AdminDashboardPage() {
       .select(
         "order_no, customer_name, customer_phone, total, status, utr_reference, created_at",
       )
-      .eq("store_id", storeId)
+      .eq("store_id", activeStoreId)
       .order("created_at", { ascending: false });
 
     if (!data) return;

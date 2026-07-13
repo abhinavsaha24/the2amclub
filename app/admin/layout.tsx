@@ -1,5 +1,4 @@
 "use client";
-import { getStoreId, clearStoreSession } from "@/lib/storeAuth";
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -16,67 +15,66 @@ import {
   X,
   ChevronRight,
   Building2,
+  ChevronDown,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
-
+import { getUserStores, clearStoreSession } from "@/lib/storeAuth";
+import { useAdminStore } from "@/store/adminStore";
 
 const navItems = [
-  {
-    href: "/admin/dashboard",
-    label: "Dashboard",
-    icon: <LayoutDashboard size={18} />,
-  },
+  { href: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
   { href: "/admin/products", label: "Products", icon: <Package size={18} /> },
   { href: "/admin/orders", label: "Orders", icon: <ShoppingBag size={18} /> },
   { href: "/admin/settings", label: "Settings", icon: <Settings size={18} /> },
 ];
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [locationName, setStoreName] = useState<string>("");
+  const [storeSwitcherOpen, setStoreSwitcherOpen] = useState(false);
+
+  const { activeStoreId, activeStoreName, availableStores, setAvailableStores, setActiveStore } =
+    useAdminStore();
 
   useEffect(() => {
-    if (pathname === "/admin/login") {
+    if (pathname === "/admin/login" || pathname === "/admin/register") {
       setChecking(false);
       return;
     }
-    const check = async () => {
+
+    const bootstrap = async () => {
       try {
-        const storeId = await getStoreId();
-        if (!storeId) {
+        const stores = await getUserStores();
+
+        if (stores.length === 0) {
           router.replace("/admin/login");
           return;
         }
 
-        // Fetch location name for the sidebar
-        const supabase = createClient();
-        const { data } = await supabase
-          .from("stores")
-          .select("name")
-          .eq("id", storeId)
-          .single();
-        if (data) setStoreName(data.name);
-
+        setAvailableStores(stores);
         setChecking(false);
       } catch {
         router.replace("/admin/login");
       }
     };
-    check();
-  }, [router, pathname]);
+
+    bootstrap();
+  }, [router, pathname, setAvailableStores]);
 
   const handleLogout = async () => {
+    useAdminStore.getState().clearAdminStore();
     await clearStoreSession();
     router.replace("/admin/login");
+  };
+
+  const handleStoreSwitch = (storeId: string) => {
+    setActiveStore(storeId);
+    setStoreSwitcherOpen(false);
+    // Force re-render of the current page by navigating to the same route
+    router.refresh();
   };
 
   if (checking) {
@@ -87,8 +85,7 @@ export default function AdminLayout({
     );
   }
 
-  // If on login page, just render the content without sidebar
-  if (pathname === "/admin/login") {
+  if (pathname === "/admin/login" || pathname === "/admin/register") {
     return <>{children}</>;
   }
 
@@ -98,26 +95,69 @@ export default function AdminLayout({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 w-64 bg-card border-r border-border flex flex-col transition-transform duration-300",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        {/* Logo */}
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center gap-2 mb-2">
+        {/* Logo & Store Switcher */}
+        <div className="p-6 border-b border-border space-y-3">
+          <div className="flex items-center gap-2">
             <Zap size={20} className="text-primary" fill="currentColor" />
             <div>
-              <p className="font-heading font-bold text-foreground text-sm">
-                The 2AM Club
-              </p>
+              <p className="font-heading font-bold text-foreground text-sm">The 2AM Club</p>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
                 Admin Portal
               </p>
             </div>
           </div>
-          {locationName && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg mt-3 text-xs font-semibold">
-              <Building2 size={12} />
-              {locationName}
+
+          {/* Store Switcher */}
+          {activeStoreName && (
+            <div className="relative">
+              <button
+                onClick={() => setStoreSwitcherOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-1.5 px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg text-xs font-semibold hover:bg-secondary/80 transition-colors"
+                aria-expanded={storeSwitcherOpen}
+                aria-haspopup="listbox"
+              >
+                <span className="flex items-center gap-1.5 truncate">
+                  <Building2 size={12} className="shrink-0" />
+                  <span className="truncate">{activeStoreName}</span>
+                </span>
+                {availableStores.length > 1 && (
+                  <ChevronDown
+                    size={12}
+                    className={cn(
+                      "shrink-0 transition-transform",
+                      storeSwitcherOpen && "rotate-180"
+                    )}
+                  />
+                )}
+              </button>
+
+              {storeSwitcherOpen && availableStores.length > 1 && (
+                <div
+                  role="listbox"
+                  className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden"
+                >
+                  {availableStores.map((store) => (
+                    <button
+                      key={store.id}
+                      role="option"
+                      aria-selected={store.id === activeStoreId}
+                      onClick={() => handleStoreSwitch(store.id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-xs font-medium transition-colors flex items-center gap-2",
+                        store.id === activeStoreId
+                          ? "bg-primary/10 text-primary"
+                          : "text-foreground hover:bg-secondary"
+                      )}
+                    >
+                      <Building2 size={11} />
+                      {store.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -135,7 +175,7 @@ export default function AdminLayout({
                   "flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -180,8 +220,7 @@ export default function AdminLayout({
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <span className="font-heading font-semibold text-foreground text-sm">
-            {navItems.find((i) => pathname.startsWith(i.href))?.label ??
-              "Admin"}
+            {navItems.find((i) => pathname.startsWith(i.href))?.label ?? "Admin"}
           </span>
         </div>
 

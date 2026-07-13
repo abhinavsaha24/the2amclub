@@ -1,5 +1,6 @@
 "use client";
-import { getStoreId } from "@/lib/storeAuth";
+import { useAdminStore } from "@/store/adminStore";
+import { apiClient, ApiError } from "@/lib/api/client";
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -25,21 +26,21 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const activeStoreId = useAdminStore((s) => s.activeStoreId);
 
   const fetchOrders = useCallback(async () => {
-    const storeId = await getStoreId();
-    if (!storeId) return;
+    if (!activeStoreId) return;
 
     const supabase = createClient();
     const { data } = await supabase
       .from("orders")
       .select("*, order_items(product_id, qty, price, product:products(name))")
-      .eq("store_id", storeId)
+      .eq("store_id", activeStoreId)
       .order("created_at", { ascending: false });
 
     setOrders((data as Order[]) ?? []);
     setLoading(false);
-  }, []);
+  }, [activeStoreId]);
 
   useEffect(() => {
     fetchOrders();
@@ -49,23 +50,14 @@ export default function AdminOrdersPage() {
     setUpdatingId(orderId);
 
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to update status");
-      }
+      await apiClient.patch(`/api/orders/${orderId}/status`, { status: newStatus });
 
       toast.success("Order status updated");
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)),
       );
-    } catch (err: any) {
-      toast.error(err.message || "Status update failed");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Status update failed");
     } finally {
       setUpdatingId(null);
     }

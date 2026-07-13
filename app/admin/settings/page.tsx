@@ -1,5 +1,6 @@
 "use client";
-import { getStoreId } from "@/lib/storeAuth";
+import { useAdminStore } from "@/store/adminStore";
+import { apiClient, ApiError } from "@/lib/api/client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -28,7 +29,7 @@ type SettingsFormData = z.infer<typeof UpdateStoreValidator>;
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [locationId, setStoreId] = useState<string | null>(null);
+  const activeStoreId = useAdminStore((s) => s.activeStoreId);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -50,15 +51,13 @@ export default function AdminSettingsPage() {
   });
 
   const fetchSettings = useCallback(async () => {
-    const storeId = await getStoreId();
-    if (!storeId) return;
-    setStoreId(storeId);
+    if (!activeStoreId) return;
 
     const supabase = createClient();
     const { data } = await supabase
       .from("stores")
       .select("*")
-      .eq("id", storeId)
+      .eq("id", activeStoreId)
       .single();
 
     if (data) {
@@ -73,7 +72,7 @@ export default function AdminSettingsPage() {
       setImagePreview(loc.qr_code ? getImageUrl(loc.qr_code) : null);
     }
     setLoading(false);
-  }, [reset]);
+  }, [reset, activeStoreId]);
 
   useEffect(() => {
     fetchSettings();
@@ -95,7 +94,7 @@ export default function AdminSettingsPage() {
   };
 
   const onSubmit = async (data: SettingsFormData) => {
-    if (!locationId) return;
+    if (!activeStoreId) return;
     setSaving(true);
 
     const formData = new FormData();
@@ -112,24 +111,18 @@ export default function AdminSettingsPage() {
     }
 
     try {
-      const res = await fetch("/api/v1/admin/settings", {
-        method: "PUT",
-        body: formData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error?.message || "Failed to update settings");
-      }
+      const result = await apiClient.patch<{ data?: { qr_code?: string } }>(
+        "/api/v1/admin/settings",
+        formData
+      );
 
       toast.success("Settings updated successfully!");
       if (result.data?.qr_code) {
         setExistingQrPath(result.data.qr_code);
       }
       setImageFile(null);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update settings");
     } finally {
       setSaving(false);
     }

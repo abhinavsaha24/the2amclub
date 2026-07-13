@@ -5,23 +5,21 @@ import { ValidationError } from "@/lib/errors";
 import {
   withStoreAdminApiHandler,
   successResponse,
-  StoreAdminContext
+  StoreAdminContext,
 } from "@/lib/utils/api";
 
-export const PUT = withStoreAdminApiHandler(
+export const PATCH = withStoreAdminApiHandler(
   "update_settings",
   async (req: NextRequest, ctx: StoreAdminContext) => {
     const formData = await req.formData();
-    const dataString = formData.get("data") as string;
-    
-    if (!dataString) throw new ValidationError("Missing settings data");
-    
-    let rawData;
-    try {
-      rawData = JSON.parse(dataString);
-    } catch {
-      throw new ValidationError("Invalid JSON format for settings data");
-    }
+
+    // Parse individual form fields (as sent by the admin settings page)
+    const rawData = {
+      shop_open: formData.get("shop_open") === "true",
+      notice: formData.get("notice") ?? undefined,
+      upi_id: formData.get("upi_id") ?? undefined,
+      pickup_address: formData.get("pickup_address") ?? undefined,
+    };
 
     const validationResult = UpdateStoreValidator.safeParse(rawData);
     if (!validationResult.success) {
@@ -32,24 +30,24 @@ export const PUT = withStoreAdminApiHandler(
     }
 
     const file = formData.get("qr_image") as File | null;
-    let qrBuffer: Buffer | undefined = undefined;
-    let qrMime: string | undefined = undefined;
-    let qrPath: string | undefined = undefined;
+    let qrBuffer: Buffer | undefined;
+    let qrMime: string | undefined;
+    let qrPath: string | undefined;
 
-    if (file) {
+    if (file && file.size > 0) {
       if (!file.type.startsWith("image/")) {
         throw new ValidationError("Uploaded file is not a valid image");
       }
       const arrayBuffer = await file.arrayBuffer();
       qrBuffer = Buffer.from(arrayBuffer);
       qrMime = file.type;
-      
-      const fileExt = file.name.split('.').pop() || 'webp';
+
+      const fileExt = file.name.split(".").pop() ?? "webp";
       const safeFilename = crypto.randomUUID() + "." + fileExt;
       qrPath = `${ctx.storeId}/qr/${safeFilename}`;
     }
 
-    const oldQrPath = rawData.old_qr_path || null;
+    const oldQrPath = (formData.get("old_qr_path") as string | null) ?? null;
 
     const store = await storeService.updateSettings(
       ctx.userId,
