@@ -219,13 +219,13 @@ BEGIN
 
   -- RPC: Create Profile on User Signup (Auth hook)
   create or replace function handle_new_user()
-  returns trigger as $$
+  returns trigger as $fn$
   begin
     insert into public.profiles (id, name, role)
     values (new.id, coalesce(new.raw_user_meta_data->>'full_name', 'User'), 'STAFF');
     return new;
   end;
-  $$ language plpgsql security definer;
+  $fn$ language plpgsql security definer;
 
   drop trigger if exists on_auth_user_created on auth.users;
   create trigger on_auth_user_created
@@ -270,12 +270,12 @@ BEGIN
 
   -- Helper to check if user belongs to a store
   create or replace function user_belongs_to_store(p_store_id uuid)
-  returns boolean as $$
+  returns boolean as $fn$
     select exists (
       select 1 from store_members 
       where store_id = p_store_id and profile_id = auth.uid()
     );
-  $$ language sql security definer;
+  $fn$ language sql security definer;
 
   -- 1. Organizations
   DROP POLICY IF EXISTS "Public Read Organizations" ON organizations;
@@ -318,7 +318,7 @@ END $$;
 -- ============================================================
 -- 15. STORAGE POLICIES
 -- ============================================================
-DO $ $
+DO $$
 BEGIN
   -- We assume 'product-images' bucket exists (managed outside or during seed)
   -- Allow public read access to product-images
@@ -332,5 +332,5 @@ BEGIN
   CREATE POLICY "Auth Manage Images" ON storage.objects FOR ALL USING (
     bucket_id = 'product-images' AND auth.role() = 'authenticated'
   );
-END $ $;
+END $$;
 
